@@ -8,7 +8,7 @@ from frigate.camera import PTZMetrics
 from frigate.comms.config_updater import ConfigSubscriber
 from frigate.config import MotionConfig
 from frigate.motion import MotionDetector
-from frigate.util.image import grab_cv2_contours
+from frigate.util.image import create_mask, get_active_masks, grab_cv2_contours
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,8 @@ class ImprovedMotionDetector(MotionDetector):
         self.config_subscriber = ConfigSubscriber(f"config/motion/{name}", True)
         self.ptz_metrics = ptz_metrics
         self.last_stop_time = None
+        self.last_pan = 0
+        self.last_tilt = 0
 
     def is_calibrating(self):
         return self.calibrating
@@ -82,6 +84,18 @@ class ImprovedMotionDetector(MotionDetector):
                     int(self.frame_shape[0] * 0.9),
                 )
             ]
+
+        # Check if PTZ position has changed and update mask accordingly
+        if self.ptz_metrics is not None:
+            current_pan = self.ptz_metrics.pan.value
+            current_tilt = self.ptz_metrics.tilt.value
+            
+            # Only update mask if PTZ position has changed significantly (threshold of 0.01)
+            if (abs(current_pan - self.last_pan) > 0.01 or 
+                abs(current_tilt - self.last_tilt) > 0.01):
+                self.last_pan = current_pan
+                self.last_tilt = current_tilt
+                self.update_ptz_mask()
 
         gray = frame[0 : self.frame_shape[0], 0 : self.frame_shape[1]]
 
@@ -247,3 +261,27 @@ class ImprovedMotionDetector(MotionDetector):
     def stop(self) -> None:
         """stop the motion detector."""
         self.config_subscriber.stop()
+
+    def update_ptz_mask(self) -> None:
+        """Update the motion mask based on current PTZ position."""
+        if not hasattr(self.config, 'ptz_masks_rasterized') or not self.config.ptz_masks_rasterized:
+            return
+        
+        pan = self.ptz_metrics.pan.value
+        tilt = self.ptz_metrics.tilt.value
+        
+        ptz_masks = getattr(self.config, 'ptz_masks', None)
+        
+        if not ptz_masks:
+            return
+        
+        active_coords = get_active_masks(ptz_masks, pan, tilt)
+        
+        if active_coords:
+            dynamic_mask = create_mask(self.frame_shape, active_coords)
+            resized_mask = cv2.resize(
+                dynamic_mask,
+                dsize=(self.motion_frame_size[1], self.motion_frame_size[0]),
+                interpolation=cv2.INTER_AREA,
+            )
+            self.mask = np.where(resized_mask == [0])

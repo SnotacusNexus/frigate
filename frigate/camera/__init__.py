@@ -43,6 +43,8 @@ class PTZMetrics:
     start_time: Synchronized
     stop_time: Synchronized
     frame_time: Synchronized
+    pan: Synchronized
+    tilt: Synchronized
     zoom_level: Synchronized
     max_zoom: Synchronized
     min_zoom: Synchronized
@@ -57,6 +59,8 @@ class PTZMetrics:
         self.start_time = mp.Value("d", 0)
         self.stop_time = mp.Value("d", 0)
         self.frame_time = mp.Value("d", 0)
+        self.pan = mp.Value("d", 0)
+        self.tilt = mp.Value("d", 0)
         self.zoom_level = mp.Value("d", 0)
         self.max_zoom = mp.Value("d", 0)
         self.min_zoom = mp.Value("d", 0)

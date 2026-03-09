@@ -4,7 +4,16 @@ from pydantic import Field, field_serializer
 
 from ..base import FrigateBaseModel
 
-__all__ = ["MotionConfig"]
+__all__ = ["MotionConfig", "PtzMaskConfig"]
+
+
+class PtzMaskConfig(FrigateBaseModel):
+    """Configuration for a PTZ-aware motion mask."""
+    coordinates: str = Field(default="", title="Coordinates polygon for the motion mask.")
+    pan_min: Optional[float] = Field(default=None, description="Minimum pan position (0-1)")
+    pan_max: Optional[float] = Field(default=None, description="Maximum pan position (0-1)")
+    tilt_min: Optional[float] = Field(default=None, description="Minimum tilt position (0-1)")
+    tilt_max: Optional[float] = Field(default=None, description="Maximum tilt position (0-1)")
 
 
 class MotionConfig(FrigateBaseModel):
@@ -34,6 +43,7 @@ class MotionConfig(FrigateBaseModel):
         default=None, title="Keep track of original state of motion detection."
     )
     raw_mask: Union[str, list[str]] = ""
+    ptz_masks: dict[str, PtzMaskConfig] = Field(default={}, title="PTZ-aware motion masks")
 
     @field_serializer("mask", when_used="json")
     def serialize_mask(self, value: Any, info):

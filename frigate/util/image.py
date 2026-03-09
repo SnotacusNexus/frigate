@@ -938,6 +938,61 @@ def add_mask(mask: str, mask_img: np.ndarray):
     cv2.fillPoly(mask_img, pts=[contour], color=(0))
 
 
+def get_active_masks(ptz_masks: dict, pan: float, tilt: float) -> list:
+    """
+    Get masks that should be active based on PTZ position.
+
+    Args:
+        ptz_masks: Dictionary of mask_id to PtzMaskConfig
+        pan: Current pan position (0-1)
+        tilt: Current tilt position (0-1)
+
+    Returns:
+        List of mask coordinate strings that are active for the current position
+    """
+    active_coords = []
+
+    for mask_id, mask_config in ptz_masks.items():
+        if isinstance(mask_config, dict):
+            coordinates = mask_config.get("coordinates")
+            pan_min = mask_config.get("pan_min")
+            pan_max = mask_config.get("pan_max")
+            tilt_min = mask_config.get("tilt_min")
+            tilt_max = mask_config.get("tilt_max")
+        else:
+            coordinates = mask_config.coordinates
+            pan_min = mask_config.pan_min
+            pan_max = mask_config.pan_max
+            tilt_min = mask_config.tilt_min
+            tilt_max = mask_config.tilt_max
+
+        has_ptz_constraints = (
+            pan_min is not None or
+            pan_max is not None or
+            tilt_min is not None or
+            tilt_max is not None
+        )
+
+        if not has_ptz_constraints:
+            if coordinates:
+                active_coords.append(coordinates)
+            continue
+
+        pan_in_range = (
+            (pan_min is None or pan >= pan_min) and
+            (pan_max is None or pan <= pan_max)
+        )
+        tilt_in_range = (
+            (tilt_min is None or tilt >= tilt_min) and
+            (tilt_max is None or tilt <= tilt_max)
+        )
+
+        if pan_in_range and tilt_in_range and coordinates:
+            active_coords.append(coordinates)
+
+    return active_coords
+
+
 def get_image_from_recording(
     ffmpeg,  # Ffmpeg Config
     file_path: str,

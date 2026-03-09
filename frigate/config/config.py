@@ -102,6 +102,8 @@ stream_info_retriever = StreamInfoRetriever()
 class RuntimeMotionConfig(MotionConfig):
     raw_mask: Union[str, List[str]] = ""
     mask: np.ndarray = None
+    ptz_masks_rasterized: dict = {}
+    ptz_masks_raw: dict = {}
 
     def __init__(self, **config):
         frame_shape = config.get("frame_shape", (1, 1))
@@ -116,6 +118,26 @@ class RuntimeMotionConfig(MotionConfig):
             empty_mask[:] = 255
             config["mask"] = empty_mask
 
+        ptz_masks = config.get("ptz_masks", {})
+        ptz_masks_rasterized = {}
+        ptz_masks_raw = {}
+
+        for mask_id, mask_config in ptz_masks.items():
+            if hasattr(mask_config, 'coordinates'):
+                coords = mask_config.coordinates
+            else:
+                coords = mask_config.get('coordinates', '') if isinstance(mask_config, dict) else ''
+
+            if coords:
+                relative_coords = get_relative_coordinates(coords, frame_shape)
+                ptz_masks_rasterized[mask_id] = create_mask(frame_shape, relative_coords)
+                ptz_masks_raw[mask_id] = relative_coords
+            else:
+                ptz_masks_rasterized[mask_id] = None
+
+        config["ptz_masks_rasterized"] = ptz_masks_rasterized
+        config["ptz_masks_raw"] = ptz_masks_raw
+
         super().__init__(**config)
 
     def dict(self, **kwargs):
@@ -123,6 +145,10 @@ class RuntimeMotionConfig(MotionConfig):
         if "mask" in ret:
             ret["mask"] = ret["raw_mask"]
             ret.pop("raw_mask")
+        if "ptz_masks_rasterized" in ret:
+            ret.pop("ptz_masks_rasterized")
+        if "ptz_masks_raw" in ret:
+            ret["ptz_masks"] = ret.pop("ptz_masks_raw")
         return ret
 
     @field_serializer("mask", when_used="json")
@@ -131,6 +157,14 @@ class RuntimeMotionConfig(MotionConfig):
 
     @field_serializer("raw_mask", when_used="json")
     def serialize_raw_mask(self, value: Any, info):
+        return None
+
+    @field_serializer("ptz_masks_rasterized", when_used="json")
+    def serialize_ptz_masks_rasterized(self, value: Any, info):
+        return None
+
+    @field_serializer("ptz_masks_raw", when_used="json")
+    def serialize_ptz_masks_raw(self, value: Any, info):
         return None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="ignore")

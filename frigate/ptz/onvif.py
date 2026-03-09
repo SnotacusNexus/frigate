@@ -369,6 +369,21 @@ class OnvifController:
                             f"Disabling autotracking zooming for {camera_name}: Absolute zoom not supported. Exception: {e}"
                         )
 
+        if configs.DefaultAbsolutePanTiltPositionSpace:
+            supported_features.append("pt-a")
+            if (
+                self.config.cameras[camera_name].onvif.autotracking.enabled_in_config
+                and self.config.cameras[camera_name].onvif.autotracking.enabled
+            ):
+                try:
+                    self.cams[camera_name]["absolute_pan_tilt_range"] = (
+                        ptz_config.Spaces.AbsolutePanTiltPositionSpace[0]
+                    )
+                except Exception as e:
+                    logger.debug(
+                        f"Absolute pan/tilt position not supported for {camera_name}: {e}"
+                    )
+
         # set relative pan/tilt space for autotracker
         if (
             self.config.cameras[camera_name].onvif.autotracking.enabled_in_config
@@ -850,6 +865,37 @@ class OnvifController:
                 logger.debug(
                     f"{camera_name}: Camera zoom level: {self.ptz_metrics[camera_name].zoom_level.value}"
                 )
+
+            # store absolute pan/tilt position if available
+            if (
+                "absolute_pan_tilt_range" in self.cams[camera_name]
+                and hasattr(status.Position, "PanTilt")
+                and status.Position.PanTilt is not None
+            ):
+                try:
+                    self.ptz_metrics[camera_name].pan.value = numpy.interp(
+                        round(status.Position.PanTilt.x, 2),
+                        [
+                            self.cams[camera_name]["absolute_pan_tilt_range"]["XRange"]["Min"],
+                            self.cams[camera_name]["absolute_pan_tilt_range"]["XRange"]["Max"],
+                        ],
+                        [0, 1],
+                    )
+                    self.ptz_metrics[camera_name].tilt.value = numpy.interp(
+                        round(status.Position.PanTilt.y, 2),
+                        [
+                            self.cams[camera_name]["absolute_pan_tilt_range"]["YRange"]["Min"],
+                            self.cams[camera_name]["absolute_pan_tilt_range"]["YRange"]["Max"],
+                        ],
+                        [0, 1],
+                    )
+                    logger.debug(
+                        f"{camera_name}: Camera pan: {self.ptz_metrics[camera_name].pan.value}, tilt: {self.ptz_metrics[camera_name].tilt.value}"
+                    )
+                except Exception as e:
+                    logger.debug(
+                        f"{camera_name}: Failed to get pan/tilt position: {e}"
+                    )
 
             # some hikvision cams won't update MoveStatus, so warn if it hasn't changed
             if (
