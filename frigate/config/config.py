@@ -102,8 +102,8 @@ stream_info_retriever = StreamInfoRetriever()
 class RuntimeMotionConfig(MotionConfig):
     raw_mask: Union[str, List[str]] = ""
     mask: np.ndarray = None
-    ptz_masks_rasterized: dict = {}
-    ptz_masks_raw: dict = {}
+    ptz_masks_rasterized: Optional[dict] = None
+    ptz_masks_raw: Optional[dict] = None
 
     def __init__(self, **config):
         frame_shape = config.get("frame_shape", (1, 1))
@@ -165,7 +165,7 @@ class RuntimeMotionConfig(MotionConfig):
 
     @field_serializer("ptz_masks_raw", when_used="json")
     def serialize_ptz_masks_raw(self, value: Any, info):
-        return None
+        return value
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="ignore")
 
