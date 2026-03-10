@@ -101,9 +101,9 @@ stream_info_retriever = StreamInfoRetriever()
 
 class RuntimeMotionConfig(MotionConfig):
     raw_mask: Union[str, List[str]] = ""
-    mask: np.ndarray = None
-    ptz_masks_rasterized: Optional[dict] = None
-    ptz_masks_raw: Optional[dict] = None
+    mask: Optional[np.ndarray] = None
+    ptz_masks_rasterized: Optional[dict] = Field(default=None)
+    ptz_masks_raw: Optional[dict] = Field(default=None)
 
     def __init__(self, **config):
         frame_shape = config.get("frame_shape", (1, 1))
