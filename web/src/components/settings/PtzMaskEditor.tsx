@@ -37,6 +37,8 @@ export type PtzMaskPolygon = Polygon & {
   };
 };
 
+type PtzRangeKey = "pan_min" | "pan_max" | "tilt_min" | "tilt_max";
+
 type PtzMaskEditorProps = {
   camera: string;
   polygons?: PtzMaskPolygon[];
@@ -144,7 +146,7 @@ export default function PtzMaskEditor({
   }, [activePolygonIndex, polygons, currentPtzPosition, setPolygons, t]);
 
   const updatePtzRange = useCallback(
-    (key: keyof PtzMaskPolygon["ptzRange"], value: number) => {
+    (key: PtzRangeKey, value: number) => {
       if (activePolygonIndex !== undefined && polygons) {
         const updatedPolygons = [...polygons] as PtzMaskPolygon[];
         updatedPolygons[activePolygonIndex] = {
@@ -228,7 +230,7 @@ export default function PtzMaskEditor({
           toast.success(t("ptzMask.saveSuccess") || "PTZ masks saved successfully", {
             position: "top-center",
           });
-          updateConfig();
+          updateConfig("config");
         } else {
           toast.error(
             t("toast.save.error.title", {
