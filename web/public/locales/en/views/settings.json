@@ -348,6 +348,35 @@
           "noName": "Object Mask has been saved. Restart Frigate to apply changes."
         }
       }
+    },
+    "ptzMasks": {
+      "label": "PTZ Masks",
+      "documentTitle": "Edit PTZ Mask - Frigate",
+      "desc": {
+        "title": "PTZ masks define areas where autotracking should be active when the camera is at a specific PTZ position.",
+        "documentation": "Documentation"
+      },
+      "add": "Add PTZ Mask",
+      "edit": "Edit PTZ Mask",
+      "ptzMaskLabel": "PTZ Mask {{number}}",
+      "point_one": "{{count}} point",
+      "point_other": "{{count}} points",
+      "toast": {
+        "success": {
+          "title": "{{polygonName}} has been saved. Restart Frigate to apply changes.",
+          "noName": "PTZ Mask has been saved. Restart Frigate to apply changes."
+        }
+      }
+    },
+    "ptzMask": {
+      "capturedSuccess": "PTZ position captured successfully",
+      "capturePosition": "Capture Current PTZ Position",
+      "capturedPosition": "Captured Position",
+      "currentPosition": "Current PTZ Position",
+      "refresh": "Refresh",
+      "ptzRange": "PTZ Range (Tolerance)",
+      "panRange": "Pan Range",
+      "tiltRange": "Tilt Range"
     }
   },
   "motionDetectionTuner": {

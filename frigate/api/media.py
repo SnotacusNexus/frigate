@@ -125,6 +125,32 @@ async def camera_ptz_info(request: Request, camera_name: str):
         )
 
 
+@router.get("/{camera_name}/ptz/position")
+async def camera_ptz_position(request: Request, camera_name: str):
+    if camera_name in request.app.frigate_config.cameras:
+        ptz_metrics = request.app.ptz_metrics
+        if camera_name in ptz_metrics:
+            pan = ptz_metrics[camera_name].pan.value
+            tilt = ptz_metrics[camera_name].tilt.value
+            zoom = ptz_metrics[camera_name].zoom_level.value
+            return JSONResponse(content={
+                "pan": pan,
+                "tilt": tilt,
+                "zoom": zoom,
+            })
+        else:
+            return JSONResponse(content={
+                "pan": 0.0,
+                "tilt": 0.0,
+                "zoom": 0.0,
+            })
+    else:
+        return JSONResponse(
+            content={"success": False, "message": "Camera not found"},
+            status_code=404,
+        )
+
+
 @router.get("/{camera_name}/latest.{extension}")
 def latest_frame(
     request: Request,

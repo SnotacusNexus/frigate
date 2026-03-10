@@ -256,6 +256,22 @@ export interface CameraConfig {
       color: number[];
     };
   };
+  ptz_masks: {
+    [maskName: string]: {
+      coordinates: string;
+      ptz_position?: {
+        pan: number;
+        tilt: number;
+        zoom: number;
+      };
+      ptz_range?: {
+        pan_min?: number;
+        pan_max?: number;
+        tilt_min?: number;
+        tilt_max?: number;
+      };
+    };
+  };
 }
 
 export type CameraGroupConfig = {

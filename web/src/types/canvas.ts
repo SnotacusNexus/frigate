@@ -1,4 +1,4 @@
-export type PolygonType = "zone" | "motion_mask" | "object_mask";
+export type PolygonType = "zone" | "motion_mask" | "object_mask" | "ptz_mask";
 
 export type Polygon = {
   typeIndex: number;

@@ -33,6 +33,7 @@ import Heading from "@/components/ui/heading";
 import ZoneEditPane from "@/components/settings/ZoneEditPane";
 import MotionMaskEditPane from "@/components/settings/MotionMaskEditPane";
 import ObjectMaskEditPane from "@/components/settings/ObjectMaskEditPane";
+import PtzMaskEditor, { PtzMaskPolygon } from "@/components/settings/PtzMaskEditor";
 import PolygonItem from "@/components/settings/PolygonItem";
 import { Link } from "react-router-dom";
 import { isDesktop } from "react-device-detect";
@@ -166,6 +167,9 @@ export default function MasksAndZonesView({
     if (type == "object_mask") {
       polygonColor = [128, 128, 128];
     }
+    if (type == "ptz_mask") {
+      polygonColor = [255, 165, 0];
+    }
 
     setEditingPolygons([
       ...(allPolygons || []),
@@ -263,6 +267,7 @@ export default function MasksAndZonesView({
       let motionMasks: Polygon[] = [];
       let globalObjectMasks: Polygon[] = [];
       let objectMasks: Polygon[] = [];
+      let ptzMasks: Polygon[] = [];
 
       // this can be an array or a string
       motionMasks = (
@@ -362,17 +367,39 @@ export default function MasksAndZonesView({
           });
         });
 
+      ptzMasks = Object.entries(cameraConfig.ptz_masks || {}).map(
+        ([name, ptzMaskData], index) => ({
+          type: "ptz_mask" as PolygonType,
+          typeIndex: index,
+          camera: cameraConfig.name,
+          name: name || t("masksAndZones.ptzMaskLabel", { number: index + 1 }),
+          objects: [],
+          points: interpolatePoints(
+            parseCoordinates(ptzMaskData.coordinates),
+            1,
+            1,
+            scaledWidth,
+            scaledHeight,
+          ),
+          distances: [],
+          isFinished: true,
+          color: [255, 165, 0],
+        }),
+      );
+
       setAllPolygons([
         ...zones,
         ...motionMasks,
         ...globalObjectMasks,
         ...objectMasks,
+        ...ptzMasks,
       ]);
       setEditingPolygons([
         ...zones,
         ...motionMasks,
         ...globalObjectMasks,
         ...objectMasks,
+        ...ptzMasks,
       ]);
     }
     // we know that these deps are correct
@@ -494,6 +521,25 @@ export default function MasksAndZonesView({
                 onSave={handleSave}
                 snapPoints={snapPoints}
                 setSnapPoints={setSnapPoints}
+              />
+            )}
+            {editPane == "ptz_mask" && (
+              <PtzMaskEditor
+                camera={selectedCamera}
+                polygons={editingPolygons as PtzMaskPolygon[]}
+                setPolygons={setEditingPolygons as React.Dispatch<React.SetStateAction<PtzMaskPolygon[]>>}
+                activePolygonIndex={activePolygonIndex}
+                setActivePolygonIndex={setActivePolygonIndex}
+                scaledWidth={scaledWidth}
+                scaledHeight={scaledHeight}
+                isLoading={isLoading}
+                setIsLoading={setIsLoading}
+                onCancel={handleCancel}
+                onSave={handleSave}
+                snapPoints={snapPoints}
+                setSnapPoints={setSnapPoints}
+                containerRef={containerRef}
+                activeLine={activeLine}
               />
             )}
             {editPane === undefined && (
@@ -693,6 +739,78 @@ export default function MasksAndZonesView({
                       {allPolygons
                         .flatMap((polygon, index) =>
                           polygon.type === "object_mask"
+                            ? [{ polygon, index }]
+                            : [],
+                        )
+                        .map(({ polygon, index }) => (
+                          <PolygonItem
+                            key={index}
+                            polygon={polygon}
+                            index={index}
+                            hoveredPolygonIndex={hoveredPolygonIndex}
+                            setHoveredPolygonIndex={setHoveredPolygonIndex}
+                            setActivePolygonIndex={setActivePolygonIndex}
+                            setEditPane={setEditPane}
+                            handleCopyCoordinates={handleCopyCoordinates}
+                          />
+                        ))}
+                    </div>
+                  )}
+                  {(selectedZoneMask === undefined ||
+                    selectedZoneMask.includes(
+                      "ptz_mask" as PolygonType,
+                    )) && (
+                    <div className="mt-3 border-t-[1px] border-secondary pt-3 first:mt-0 first:border-transparent first:pt-0 last:border-b-[1px] last:pb-3">
+                      <div className="my-3 flex flex-row items-center justify-between">
+                        <HoverCard>
+                          <HoverCardTrigger asChild>
+                            <div className="text-md cursor-default">
+                              {t("masksAndZones.ptzMasks.label")}
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent>
+                            <div className="my-2 flex flex-col gap-2 text-sm text-primary-variant">
+                              <p>{t("masksAndZones.ptzMasks.desc.title")}</p>
+                              <div className="flex items-center text-primary">
+                                <Link
+                                  to={getLocaleDocUrl(
+                                    "configuration/masks#ptz-masks",
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline"
+                                >
+                                  {t(
+                                    "masksAndZones.ptzMasks.desc.documentation",
+                                  )}{" "}
+                                  <LuExternalLink className="ml-2 inline-flex size-3" />
+                                </Link>
+                              </div>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              className="size-6 rounded-md bg-secondary-foreground p-1 text-background"
+                              aria-label={t("masksAndZones.ptzMasks.add")}
+                              onClick={() => {
+                                setEditPane("ptz_mask");
+                                handleNewPolygon("ptz_mask");
+                              }}
+                            >
+                              <LuPlus />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t("masksAndZones.ptzMasks.add")}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      {allPolygons
+                        .flatMap((polygon, index) =>
+                          polygon.type === "ptz_mask"
                             ? [{ polygon, index }]
                             : [],
                         )

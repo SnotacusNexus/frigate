@@ -5,3 +5,9 @@ export type CameraPtzInfo = {
   features: PtzFeature[];
   presets: string[];
 };
+
+export type CameraPtzPosition = {
+  pan: number;
+  tilt: number;
+  zoom: number;
+};
