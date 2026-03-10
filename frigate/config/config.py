@@ -102,23 +102,24 @@ stream_info_retriever = StreamInfoRetriever()
 class RuntimeMotionConfig(MotionConfig):
     raw_mask: Union[str, List[str]] = ""
     mask: Optional[np.ndarray] = Field(default_factory=lambda: None)
-    ptz_masks_rasterized: Optional[dict] = Field(default_factory=lambda: None)
-    ptz_masks_raw: Optional[dict] = Field(default_factory=lambda: None)
+    ptz_masks_rasterized: Optional[dict] = None
+    ptz_masks_raw: Optional[dict] = None
+    frame_shape: tuple[int, int] = (1, 1)
 
-    def __init__(self, **config):
-        frame_shape = config.get("frame_shape", (1, 1))
-
-        mask = get_relative_coordinates(config.get("mask", ""), frame_shape)
-        config["raw_mask"] = mask
+    @model_validator(mode="after")
+    def process_motion_masks(self) -> Self:
+        mask_input = self.raw_mask if self.raw_mask else self.mask
+        mask = get_relative_coordinates(mask_input, self.frame_shape) if mask_input else ""
+        self.raw_mask = mask
 
         if mask:
-            config["mask"] = create_mask(frame_shape, mask)
+            self.mask = create_mask(self.frame_shape, mask)
         else:
-            empty_mask = np.zeros(frame_shape, np.uint8)
+            empty_mask = np.zeros(self.frame_shape, np.uint8)
             empty_mask[:] = 255
-            config["mask"] = empty_mask
+            self.mask = empty_mask
 
-        ptz_masks = config.get("ptz_masks", {})
+        ptz_masks = self.ptz_masks or {}
         ptz_masks_rasterized = {}
         ptz_masks_raw = {}
 
@@ -129,16 +130,16 @@ class RuntimeMotionConfig(MotionConfig):
                 coords = mask_config.get('coordinates', '') if isinstance(mask_config, dict) else ''
 
             if coords:
-                relative_coords = get_relative_coordinates(coords, frame_shape)
-                ptz_masks_rasterized[mask_id] = create_mask(frame_shape, relative_coords)
+                relative_coords = get_relative_coordinates(coords, self.frame_shape)
+                ptz_masks_rasterized[mask_id] = create_mask(self.frame_shape, relative_coords)
                 ptz_masks_raw[mask_id] = relative_coords
             else:
                 ptz_masks_rasterized[mask_id] = None
 
-        config["ptz_masks_rasterized"] = ptz_masks_rasterized
-        config["ptz_masks_raw"] = ptz_masks_raw
+        self.ptz_masks_rasterized = ptz_masks_rasterized
+        self.ptz_masks_raw = ptz_masks_raw
 
-        super().__init__(**config)
+        return self
 
     def dict(self, **kwargs):
         ret = super().model_dump(**kwargs)
@@ -149,6 +150,8 @@ class RuntimeMotionConfig(MotionConfig):
             ret.pop("ptz_masks_rasterized")
         if "ptz_masks_raw" in ret:
             ret["ptz_masks"] = ret.pop("ptz_masks_raw")
+        if "frame_shape" in ret:
+            ret.pop("frame_shape")
         return ret
 
     @field_serializer("mask", when_used="json")
@@ -166,6 +169,10 @@ class RuntimeMotionConfig(MotionConfig):
     @field_serializer("ptz_masks_raw", when_used="json")
     def serialize_ptz_masks_raw(self, value: Any, info):
         return value
+
+    @field_serializer("frame_shape", when_used="json")
+    def serialize_frame_shape(self, value: Any, info):
+        return None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="ignore")
 
