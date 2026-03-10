@@ -529,7 +529,6 @@ export default function MasksAndZonesView({
                 polygons={editingPolygons as PtzMaskPolygon[]}
                 setPolygons={setEditingPolygons as React.Dispatch<React.SetStateAction<PtzMaskPolygon[]>>}
                 activePolygonIndex={activePolygonIndex}
-                setActivePolygonIndex={setActivePolygonIndex}
                 scaledWidth={scaledWidth}
                 scaledHeight={scaledHeight}
                 isLoading={isLoading}
@@ -600,7 +599,6 @@ export default function MasksAndZonesView({
                         )
                         .map(({ polygon, index }) => (
                           <PolygonItem
-                            key={index}
                             polygon={polygon}
                             index={index}
                             hoveredPolygonIndex={hoveredPolygonIndex}
@@ -672,7 +670,6 @@ export default function MasksAndZonesView({
                         )
                         .map(({ polygon, index }) => (
                           <PolygonItem
-                            key={index}
                             polygon={polygon}
                             index={index}
                             hoveredPolygonIndex={hoveredPolygonIndex}
@@ -744,7 +741,6 @@ export default function MasksAndZonesView({
                         )
                         .map(({ polygon, index }) => (
                           <PolygonItem
-                            key={index}
                             polygon={polygon}
                             index={index}
                             hoveredPolygonIndex={hoveredPolygonIndex}
@@ -816,7 +812,6 @@ export default function MasksAndZonesView({
                         )
                         .map(({ polygon, index }) => (
                           <PolygonItem
-                            key={index}
                             polygon={polygon}
                             index={index}
                             hoveredPolygonIndex={hoveredPolygonIndex}

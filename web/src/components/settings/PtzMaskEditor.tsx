@@ -17,7 +17,6 @@ import {
 import PolygonCanvas from "./PolygonCanvas";
 import PolygonEditControls from "./PolygonEditControls";
 import ActivityIndicator from "../indicators/activity-indicator";
-import { FrigateConfig } from "@/types/frigateConfig";
 import { CameraPtzInfo, CameraPtzPosition } from "@/types/ptz";
 import { Polygon } from "@/types/canvas";
 import { usePtzCommand } from "@/api/ws";
@@ -26,7 +25,6 @@ import { useTranslation } from "react-i18next";
 import {
   flattenPoints,
   interpolatePoints,
-  parseCoordinates,
 } from "@/utils/canvasUtil";
 
 export type PtzMaskPolygon = Polygon & {
@@ -44,7 +42,6 @@ type PtzMaskEditorProps = {
   polygons?: PtzMaskPolygon[];
   setPolygons: React.Dispatch<React.SetStateAction<PtzMaskPolygon[]>>;
   activePolygonIndex?: number;
-  setActivePolygonIndex?: React.Dispatch<React.SetStateAction<number | undefined>>;
   scaledWidth?: number;
   scaledHeight?: number;
   isLoading: boolean;
@@ -62,7 +59,6 @@ export default function PtzMaskEditor({
   polygons,
   setPolygons,
   activePolygonIndex,
-  setActivePolygonIndex,
   scaledWidth,
   scaledHeight,
   isLoading,
@@ -79,12 +75,11 @@ export default function PtzMaskEditor({
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef || internalContainerRef;
   
-  const { data: config } = useSWR<FrigateConfig>("config");
   const { data: ptzInfo } = useSWR<CameraPtzInfo>(
     camera ? `${camera}/ptz/info` : null,
   );
   const [currentPtzPosition, setCurrentPtzPosition] = useState<CameraPtzPosition | null>(null);
-  const [hoveredPolygonIndex, setHoveredPolygonIndex] = useState<number | null>(null);
+  const [hoveredPolygonIndex] = useState<number | null>(null);
 
   const fetchPtzPosition = useCallback(async () => {
     try {
@@ -155,7 +150,7 @@ export default function PtzMaskEditor({
         updatedPolygons[activePolygonIndex] = {
           ...updatedPolygons[activePolygonIndex],
           ptzRange: {
-            ...updatedPolygons[activePolygonIndex].ptzRange,
+            ...(updatedPolygons[activePolygonIndex].ptzRange || {}),
             [key]: value,
           },
         };

@@ -74,6 +74,7 @@ export default function PolygonItem({
     zone: FaDrawPolygon,
     motion_mask: FaObjectGroup,
     object_mask: BsPersonBoundingBox,
+    ptz_mask: FaObjectGroup,
   };
 
   const PolygonItemIcon = polygon ? polygonTypeIcons[polygon.type] : undefined;
