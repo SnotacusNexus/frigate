@@ -1,0 +1,50 @@
+services:
+  frigate:
+    hostname: frigate
+    container_name: frigate
+    privileged: true
+    restart: unless-stopped
+    image: ghcr.io/snotacusnexus/frigate:0.16.4-tensorrt
+    shm_size: "2gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility, video]
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./frigate/config:/config
+      - ./frigate/storage:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 3000000000
+    ports:
+      - "5001:5000"
+      - "1935:1935"
+      - "8554:8554"
+      - "8555:8555/tcp"
+      - "8555:8888/udp"
+    environment:
+      TZ: America/New_York
+      FRIGATE_RTSP_PASSWORD: "Snotobot0bot"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      NVIDIA_REQUIRE_CUDA: "cuda>=11.0"
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: "0"
+      ORT_CUDA_GRAPH_ENABLE: "1"
+      ORT_CUDA_GRAPH_CAPTURE_PERCENTAGE: "100"
+      __GL_THREADED_OPTIMIZATIONS: "1"
+      __GL_SHADER_DISK_CACHE: "1"
+      __GL_SYNC_TO_VBLANK: "0"
+      CUDA_AUTO_BOOST: "0"
+    networks:
+      docker-net9:
+        ipv4_address: 192.168.9.94
+
+networks:
+  docker-net9:
+    external: true

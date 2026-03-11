@@ -846,10 +846,12 @@ export function PtzMaskCanvas({
     setTimeout(fetchPtzPosition, 500);
   }, [sendPtz, fetchPtzPosition]);
 
+  const localContainerRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="relative size-full">
       <PolygonCanvas
-        containerRef={null}
+        containerRef={localContainerRef}
         camera={camera}
         width={width}
         height={height}

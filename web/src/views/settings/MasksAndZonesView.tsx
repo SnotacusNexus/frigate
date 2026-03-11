@@ -33,7 +33,7 @@ import Heading from "@/components/ui/heading";
 import ZoneEditPane from "@/components/settings/ZoneEditPane";
 import MotionMaskEditPane from "@/components/settings/MotionMaskEditPane";
 import ObjectMaskEditPane from "@/components/settings/ObjectMaskEditPane";
-import PtzMaskEditor, { PtzMaskPolygon, PtzMaskEditPaneMinimal, PtzMaskCanvas } from "@/components/settings/PtzMaskEditor";
+import { PtzMaskPolygon, PtzMaskEditPaneMinimal, PtzMaskCanvas } from "@/components/settings/PtzMaskEditor";
 import PolygonItem from "@/components/settings/PolygonItem";
 import { Link } from "react-router-dom";
 import { isDesktop } from "react-device-detect";

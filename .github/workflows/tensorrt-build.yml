@@ -20,7 +20,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
+      - name: Generate version.py
+        run: echo 'VERSION = "0.16.4-ptz-dynamic"' > frigate/version.py
+
       - name: Set up QEMU and Buildx
         uses: docker/setup-buildx-action@v3
         
