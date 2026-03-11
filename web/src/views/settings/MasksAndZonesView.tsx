@@ -33,7 +33,7 @@ import Heading from "@/components/ui/heading";
 import ZoneEditPane from "@/components/settings/ZoneEditPane";
 import MotionMaskEditPane from "@/components/settings/MotionMaskEditPane";
 import ObjectMaskEditPane from "@/components/settings/ObjectMaskEditPane";
-import PtzMaskEditor, { PtzMaskPolygon } from "@/components/settings/PtzMaskEditor";
+import PtzMaskEditor, { PtzMaskPolygon, PtzMaskEditPaneMinimal, PtzMaskCanvas } from "@/components/settings/PtzMaskEditor";
 import PolygonItem from "@/components/settings/PolygonItem";
 import { Link } from "react-router-dom";
 import { isDesktop } from "react-device-detect";
@@ -524,7 +524,7 @@ export default function MasksAndZonesView({
               />
             )}
             {editPane == "ptz_mask" && (
-              <PtzMaskEditor
+              <PtzMaskEditPaneMinimal
                 camera={selectedCamera}
                 polygons={editingPolygons as PtzMaskPolygon[]}
                 setPolygons={setEditingPolygons as React.Dispatch<React.SetStateAction<PtzMaskPolygon[]>>}
@@ -537,8 +537,6 @@ export default function MasksAndZonesView({
                 onSave={handleSave}
                 snapPoints={snapPoints}
                 setSnapPoints={setSnapPoints}
-                containerRef={containerRef}
-                activeLine={activeLine}
               />
             )}
             {editPane === undefined && (
@@ -836,19 +834,32 @@ export default function MasksAndZonesView({
               scaledWidth &&
               scaledHeight &&
               editingPolygons ? (
-                <PolygonCanvas
-                  containerRef={containerRef}
-                  camera={cameraConfig.name}
-                  width={scaledWidth}
-                  height={scaledHeight}
-                  polygons={editingPolygons}
-                  setPolygons={setEditingPolygons}
-                  activePolygonIndex={activePolygonIndex}
-                  hoveredPolygonIndex={hoveredPolygonIndex}
-                  selectedZoneMask={selectedZoneMask}
-                  activeLine={activeLine}
-                  snapPoints={snapPoints}
-                />
+                editPane === "ptz_mask" ? (
+                  <PtzMaskCanvas
+                    camera={cameraConfig.name}
+                    width={scaledWidth}
+                    height={scaledHeight}
+                    polygons={editingPolygons as PtzMaskPolygon[]}
+                    setPolygons={setEditingPolygons as React.Dispatch<React.SetStateAction<PtzMaskPolygon[]>>}
+                    activePolygonIndex={activePolygonIndex}
+                    activeLine={activeLine}
+                    snapPoints={snapPoints}
+                  />
+                ) : (
+                  <PolygonCanvas
+                    containerRef={containerRef}
+                    camera={cameraConfig.name}
+                    width={scaledWidth}
+                    height={scaledHeight}
+                    polygons={editingPolygons}
+                    setPolygons={setEditingPolygons}
+                    activePolygonIndex={activePolygonIndex}
+                    hoveredPolygonIndex={hoveredPolygonIndex}
+                    selectedZoneMask={selectedZoneMask}
+                    activeLine={activeLine}
+                    snapPoints={snapPoints}
+                  />
+                )
               ) : (
                 <Skeleton className="size-full" />
               )}
