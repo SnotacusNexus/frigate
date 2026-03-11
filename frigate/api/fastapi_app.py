@@ -57,6 +57,7 @@ def create_fastapi_app(
     onvif: OnvifController,
     stats_emitter: StatsEmitter,
     event_metadata_updater: EventMetadataPublisher,
+    ptz_metrics,
 ):
     logger.info("Starting FastAPI app")
     app = FastAPI(
@@ -126,6 +127,7 @@ def create_fastapi_app(
     app.camera_error_image = None
     app.onvif = onvif
     app.stats_emitter = stats_emitter
+    app.ptz_metrics = ptz_metrics
     app.event_metadata_updater = event_metadata_updater
     app.jwt_token = get_jwt_secret() if frigate_config.auth.enabled else None
 
