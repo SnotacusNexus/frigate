@@ -172,6 +172,47 @@ export default function PolygonItem({
         }
       }
 
+      if (polygon.type == "ptz_mask") {
+        const ptzMasks = Object.entries(cameraConfig.ptz_masks || {}).filter(
+          (_, currentIndex) => currentIndex !== polygon.typeIndex,
+        );
+
+        type PtzMaskData = {
+          coordinates: string;
+          pan_min?: number;
+          pan_max?: number;
+          tilt_min?: number;
+          tilt_max?: number;
+        };
+
+        url = ptzMasks
+          .map(([name, ptzMaskData]) => {
+            const typedData = ptzMaskData as PtzMaskData;
+            const coordinates = flattenPoints(
+              parseCoordinates(typedData.coordinates),
+            ).join(",");
+            let params = `cameras.${polygon?.camera}.motion.ptz_masks.${name}.coordinates=${coordinates}&`;
+            if (typedData.pan_min !== undefined) {
+              params += `cameras.${polygon?.camera}.motion.ptz_masks.${name}.pan_min=${typedData.pan_min}&`;
+            }
+            if (typedData.pan_max !== undefined) {
+              params += `cameras.${polygon?.camera}.motion.ptz_masks.${name}.pan_max=${typedData.pan_max}&`;
+            }
+            if (typedData.tilt_min !== undefined) {
+              params += `cameras.${polygon?.camera}.motion.ptz_masks.${name}.tilt_min=${typedData.tilt_min}&`;
+            }
+            if (typedData.tilt_max !== undefined) {
+              params += `cameras.${polygon?.camera}.motion.ptz_masks.${name}.tilt_max=${typedData.tilt_max}&`;
+            }
+            return params;
+          })
+          .join("");
+
+        if (!url) {
+          url = `cameras.${polygon?.camera}.motion.ptz_masks&`;
+        }
+      }
+
       setIsLoading(true);
 
       await axios

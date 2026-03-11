@@ -174,9 +174,60 @@ export default function PtzMaskEditor({
       return;
     }
 
-    const queryParams = new URLSearchParams();
+    const closeThreshold = Math.max(scaledWidth, scaledHeight) * 0.05;
+
+    const validPolygons: PtzMaskPolygon[] = [];
+    const invalidPolygons: string[] = [];
 
     polygons.forEach((polygon) => {
+      if (!polygon.isFinished) {
+        return;
+      }
+
+      if (polygon.points.length < 3) {
+        invalidPolygons.push(polygon.name || "ptz_mask");
+        return;
+      }
+
+      const firstPoint = polygon.points[0];
+      const lastPoint = polygon.points[polygon.points.length - 1];
+      const distance = Math.sqrt(
+        Math.pow((firstPoint[0] - lastPoint[0]) * scaledWidth, 2) +
+        Math.pow((firstPoint[1] - lastPoint[1]) * scaledHeight, 2)
+      );
+
+      if (distance > closeThreshold) {
+        invalidPolygons.push(polygon.name || "ptz_mask");
+        return;
+      }
+
+      validPolygons.push(polygon);
+    });
+
+    if (invalidPolygons.length > 0) {
+      toast.error(
+        t("ptzMask.invalidPolygons", {
+          polygons: invalidPolygons.join(", "),
+        }) || `Invalid polygons (not closed or insufficient points): ${invalidPolygons.join(", ")}`,
+        { position: "top-center" }
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    if (validPolygons.length === 0) {
+      toast.error(
+        t("ptzMask.noValidPolygons", {
+        }) || "No valid polygons to save",
+        { position: "top-center" }
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    const queryParams = new URLSearchParams();
+
+    validPolygons.forEach((polygon) => {
       if (!polygon.isFinished) {
         return;
       }
@@ -289,7 +340,7 @@ export default function PtzMaskEditor({
               setPolygons={(newPolygons) => setPolygons(newPolygons as PtzMaskPolygon[])}
               activePolygonIndex={activePolygonIndex}
               hoveredPolygonIndex={hoveredPolygonIndex}
-              selectedZoneMask={["motion_mask"]}
+              selectedZoneMask={["ptz_mask"]}
               activeLine={activeLine}
               snapPoints={snapPoints}
             />
@@ -646,14 +697,10 @@ function PtzOverlayControls({
   const hasPanTilt = ptzInfo?.features?.includes("pt") ?? false;
   const hasZoom = ptzInfo?.features?.includes("zoom") ?? false;
 
-  if (!ptzInfo) {
-    return null;
-  }
-
   return (
     <div className="flex flex-col items-center gap-2 rounded-lg bg-black/60 p-3 backdrop-blur-sm">
       <div className="flex items-center gap-2">
-        {hasPanTilt && (
+        {(hasPanTilt || !ptzInfo) && (
           <>
             <TooltipProvider>
               <Tooltip>
@@ -731,7 +778,7 @@ function PtzOverlayControls({
         )}
       </div>
 
-      {hasZoom && (
+      {(hasZoom || !ptzInfo) && (
         <div className="flex gap-2">
           <TooltipProvider>
             <Tooltip>
@@ -859,7 +906,7 @@ export function PtzMaskCanvas({
         setPolygons={(newPolygons) => setPolygons(newPolygons as PtzMaskPolygon[])}
         activePolygonIndex={activePolygonIndex}
         hoveredPolygonIndex={hoveredPolygonIndex}
-        selectedZoneMask={["motion_mask"]}
+        selectedZoneMask={["ptz_mask"]}
         activeLine={activeLine}
         snapPoints={snapPoints}
       />
@@ -967,9 +1014,60 @@ export function PtzMaskEditPaneMinimal({
       return;
     }
 
-    const queryParams = new URLSearchParams();
+    const closeThreshold = Math.max(scaledWidth, scaledHeight) * 0.05;
+
+    const validPolygons: PtzMaskPolygon[] = [];
+    const invalidPolygons: string[] = [];
 
     polygons.forEach((polygon) => {
+      if (!polygon.isFinished) {
+        return;
+      }
+
+      if (polygon.points.length < 3) {
+        invalidPolygons.push(polygon.name || "ptz_mask");
+        return;
+      }
+
+      const firstPoint = polygon.points[0];
+      const lastPoint = polygon.points[polygon.points.length - 1];
+      const distance = Math.sqrt(
+        Math.pow((firstPoint[0] - lastPoint[0]) * scaledWidth, 2) +
+        Math.pow((firstPoint[1] - lastPoint[1]) * scaledHeight, 2)
+      );
+
+      if (distance > closeThreshold) {
+        invalidPolygons.push(polygon.name || "ptz_mask");
+        return;
+      }
+
+      validPolygons.push(polygon);
+    });
+
+    if (invalidPolygons.length > 0) {
+      toast.error(
+        t("ptzMask.invalidPolygons", {
+          polygons: invalidPolygons.join(", "),
+        }) || `Invalid polygons (not closed or insufficient points): ${invalidPolygons.join(", ")}`,
+        { position: "top-center" }
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    if (validPolygons.length === 0) {
+      toast.error(
+        t("ptzMask.noValidPolygons", {
+        }) || "No valid polygons to save",
+        { position: "top-center" }
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    const queryParams = new URLSearchParams();
+
+    validPolygons.forEach((polygon) => {
       if (!polygon.isFinished) {
         return;
       }
