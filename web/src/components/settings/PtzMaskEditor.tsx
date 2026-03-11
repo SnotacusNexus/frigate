@@ -85,7 +85,7 @@ export default function PtzMaskEditor({
 
   const fetchPtzPosition = useCallback(async () => {
     try {
-      const response = await axios.get<CameraPtzPosition>(`/api/${camera}/ptz/position`);
+      const response = await axios.get<CameraPtzPosition>(`${camera}/ptz/position`);
       setCurrentPtzPosition(response.data);
     } catch (error) {
       console.error("Failed to fetch PTZ position:", error);
@@ -852,7 +852,7 @@ export function PtzMaskCanvas({
 
   const fetchPtzPosition = useCallback(async () => {
     try {
-      const response = await axios.get<CameraPtzPosition>(`/api/${camera}/ptz/position`);
+      const response = await axios.get<CameraPtzPosition>(`${camera}/ptz/position`);
       setCurrentPtzPosition(response.data);
     } catch (error) {
       console.error("Failed to fetch PTZ position:", error);
@@ -978,7 +978,7 @@ export function PtzMaskEditPaneMinimal({
 
   const fetchPtzPosition = useCallback(async () => {
     try {
-      const response = await axios.get<CameraPtzPosition>(`/api/${camera}/ptz/position`);
+      const response = await axios.get<CameraPtzPosition>(`${camera}/ptz/position`);
       setCurrentPtzPosition(response.data);
     } catch (error) {
       console.error("Failed to fetch PTZ position:", error);
