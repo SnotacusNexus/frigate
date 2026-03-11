@@ -279,19 +279,32 @@ export default function PtzMaskEditor({
         <Separator className="bg-secondary" />
 
         {scaledWidth && scaledHeight ? (
-          <PolygonCanvas
-            containerRef={containerRef}
-            camera={camera}
-            width={scaledWidth}
-            height={scaledHeight}
-            polygons={polygons || []}
-            setPolygons={(newPolygons) => setPolygons(newPolygons as PtzMaskPolygon[])}
-            activePolygonIndex={activePolygonIndex}
-            hoveredPolygonIndex={hoveredPolygonIndex}
-            selectedZoneMask={["motion_mask"]}
-            activeLine={activeLine}
-            snapPoints={snapPoints}
-          />
+          <div className="relative">
+            <PolygonCanvas
+              containerRef={containerRef}
+              camera={camera}
+              width={scaledWidth}
+              height={scaledHeight}
+              polygons={polygons || []}
+              setPolygons={(newPolygons) => setPolygons(newPolygons as PtzMaskPolygon[])}
+              activePolygonIndex={activePolygonIndex}
+              hoveredPolygonIndex={hoveredPolygonIndex}
+              selectedZoneMask={["motion_mask"]}
+              activeLine={activeLine}
+              snapPoints={snapPoints}
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+              <PtzOverlayControls
+                ptzInfo={ptzInfo}
+                onMoveLeft={handleMoveLeft}
+                onMoveRight={handleMoveRight}
+                onMoveUp={handleMoveUp}
+                onMoveDown={handleMoveDown}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+              />
+            </div>
+          </div>
         ) : (
           <ActivityIndicator />
         )}
@@ -602,6 +615,146 @@ function PtzControlButtons({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
+                  size="icon"
+                  onClick={onZoomOut}
+                  aria-label={t("ptz.zoom.out.label") || "Zoom Out"}
+                >
+                  <MdZoomOut />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t("ptz.zoom.out.label") || "Zoom Out"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PtzOverlayControls({
+  ptzInfo,
+  onMoveLeft,
+  onMoveRight,
+  onMoveUp,
+  onMoveDown,
+  onZoomIn,
+  onZoomOut,
+}: PtzControlButtonsProps) {
+  const { t } = useTranslation(["views/live"]);
+  const hasPanTilt = ptzInfo?.features?.includes("pt") ?? false;
+  const hasZoom = ptzInfo?.features?.includes("zoom") ?? false;
+
+  if (!ptzInfo) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-lg bg-black/60 p-3 backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        {hasPanTilt && (
+          <>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={onMoveLeft}
+                    aria-label={t("ptz.move.left.label") || "Move Left"}
+                  >
+                    <FaAngleLeft />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("ptz.move.left.label") || "Move Left"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <div className="flex flex-col gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={onMoveUp}
+                      aria-label={t("ptz.move.up.label") || "Move Up"}
+                    >
+                      <FaAngleUp />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("ptz.move.up.label") || "Move Up"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={onMoveDown}
+                      aria-label={t("ptz.move.down.label") || "Move Down"}
+                    >
+                      <FaAngleDown />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("ptz.move.down.label") || "Move Down"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={onMoveRight}
+                    aria-label={t("ptz.move.right.label") || "Move Right"}
+                  >
+                    <FaAngleRight />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("ptz.move.right.label") || "Move Right"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        )}
+      </div>
+
+      {hasZoom && (
+        <div className="flex gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={onZoomIn}
+                  aria-label={t("ptz.zoom.in.label") || "Zoom In"}
+                >
+                  <MdZoomIn />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t("ptz.zoom.in.label") || "Zoom In"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
                   size="icon"
                   onClick={onZoomOut}
                   aria-label={t("ptz.zoom.out.label") || "Zoom Out"}
