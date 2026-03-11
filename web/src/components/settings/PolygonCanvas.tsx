@@ -306,6 +306,8 @@ export function PolygonCanvas({
         />
         {polygons?.map(
           (polygon, index) =>
+            polygon &&
+            polygon.points &&
             (selectedZoneMask === undefined ||
               selectedZoneMask.includes(polygon.type)) &&
             index !== activePolygonIndex && (

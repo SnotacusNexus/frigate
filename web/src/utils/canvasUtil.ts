@@ -108,7 +108,7 @@ export function snapPointToLines(
   threshold: number,
 ): number[] | null {
   for (const polygon of polygons) {
-    if (!polygon.isFinished) continue;
+    if (!polygon || !polygon.isFinished || !polygon.points) continue;
 
     for (let i = 0; i < polygon.points.length; i++) {
       const start = polygon.points[i];
