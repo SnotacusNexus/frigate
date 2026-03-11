@@ -684,7 +684,7 @@ function PtzControlButtons({
   );
 }
 
-function PtzOverlayControls({
+const PtzOverlayControls = React.memo(function PtzOverlayControls({
   ptzInfo,
   onMoveLeft,
   onMoveRight,
@@ -696,11 +696,17 @@ function PtzOverlayControls({
   const { t } = useTranslation(["views/live"]);
   const hasPanTilt = ptzInfo?.features?.includes("pt") ?? false;
   const hasZoom = ptzInfo?.features?.includes("zoom") ?? false;
+  const isLoading = !ptzInfo;
 
   return (
     <div className="flex flex-col items-center gap-2 rounded-lg bg-black/60 p-3 backdrop-blur-sm">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
+          <ActivityIndicator />
+        </div>
+      )}
       <div className="flex items-center gap-2">
-        {(hasPanTilt || !ptzInfo) && (
+        {true && (
           <>
             <TooltipProvider>
               <Tooltip>
@@ -778,7 +784,7 @@ function PtzOverlayControls({
         )}
       </div>
 
-      {(hasZoom || !ptzInfo) && (
+      {true && (
         <div className="flex gap-2">
           <TooltipProvider>
             <Tooltip>
@@ -818,7 +824,7 @@ function PtzOverlayControls({
       )}
     </div>
   );
-}
+});
 
 interface PtzMaskCanvasProps {
   camera: string;
