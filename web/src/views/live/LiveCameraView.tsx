@@ -785,7 +785,7 @@ function PtzControlPanel({
         isMobile && "landscape:ml-12",
       )}
     >
-      {ptz?.features?.includes("pt") && (
+      {true && (
         <>
           <TooltipButton
             label={t("ptz.move.left.label")}
@@ -849,7 +849,7 @@ function PtzControlPanel({
           </TooltipButton>
         </>
       )}
-      {ptz?.features?.includes("zoom") && (
+      {true && (
         <>
           <TooltipButton
             label={t("ptz.zoom.in.label")}
@@ -884,7 +884,7 @@ function PtzControlPanel({
         </>
       )}
 
-      {ptz?.features?.includes("pt-r-fov") && (
+      {true && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
