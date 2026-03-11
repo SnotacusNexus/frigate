@@ -694,8 +694,6 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
   onZoomOut,
 }: PtzControlButtonsProps) {
   const { t } = useTranslation(["views/live"]);
-  const hasPanTilt = ptzInfo?.features?.includes("pt") ?? false;
-  const hasZoom = ptzInfo?.features?.includes("zoom") ?? false;
   const isLoading = !ptzInfo;
 
   return (
