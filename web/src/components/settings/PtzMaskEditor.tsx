@@ -186,18 +186,6 @@ export default function PtzMaskEditor({
         return;
       }
 
-      const firstPoint = polygon.points[0];
-      const lastPoint = polygon.points[polygon.points.length - 1];
-      const distance = Math.sqrt(
-        Math.pow((firstPoint[0] - lastPoint[0]) * scaledWidth, 2) +
-        Math.pow((firstPoint[1] - lastPoint[1]) * scaledHeight, 2)
-      );
-
-      if (distance > closeThreshold) {
-        invalidPolygons.push(polygon.name || "ptz_mask");
-        return;
-      }
-
       validPolygons.push(polygon);
     });
 
@@ -1007,18 +995,6 @@ export function PtzMaskEditPaneMinimal({
       }
 
       if (polygon.points.length < 3) {
-        invalidPolygons.push(polygon.name || "ptz_mask");
-        return;
-      }
-
-      const firstPoint = polygon.points[0];
-      const lastPoint = polygon.points[polygon.points.length - 1];
-      const distance = Math.sqrt(
-        Math.pow((firstPoint[0] - lastPoint[0]) * scaledWidth, 2) +
-        Math.pow((firstPoint[1] - lastPoint[1]) * scaledHeight, 2)
-      );
-
-      if (distance > closeThreshold) {
         invalidPolygons.push(polygon.name || "ptz_mask");
         return;
       }
