@@ -152,20 +152,25 @@ class OnvifController:
 
         profile = None
         for _, onvif_profile in enumerate(profiles):
-            if (
-                onvif_profile.VideoEncoderConfiguration
-                and onvif_profile.PTZConfiguration
-                and (
-                    onvif_profile.PTZConfiguration.DefaultContinuousPanTiltVelocitySpace
-                    is not None
-                    or onvif_profile.PTZConfiguration.DefaultContinuousZoomVelocitySpace
-                    is not None
-                )
-            ):
-                # use the first profile that has a valid ptz configuration
-                profile = onvif_profile
-                logger.debug(f"Selected Onvif profile for {camera_name}: {profile}")
-                break
+            if onvif_profile.VideoEncoderConfiguration and onvif_profile.PTZConfiguration:
+                ptz_config = onvif_profile.PTZConfiguration
+                has_continuous_pt = getattr(
+                    ptz_config, "DefaultContinuousPanTiltVelocitySpace", None
+                ) is not None
+                has_continuous_zoom = getattr(
+                    ptz_config, "DefaultContinuousZoomVelocitySpace", None
+                ) is not None
+                has_relative_pt = getattr(
+                    ptz_config, "DefaultRelativePanTiltTranslationSpace", None
+                ) is not None
+                has_relative_zoom = getattr(
+                    ptz_config, "DefaultRelativeZoomTranslationSpace", None
+                ) is not None
+
+                if has_continuous_pt or has_continuous_zoom or has_relative_pt or has_relative_zoom:
+                    profile = onvif_profile
+                    logger.debug(f"Selected Onvif profile for {camera_name}: {profile}")
+                    break
 
         if profile is None:
             logger.error(
@@ -316,16 +321,16 @@ class OnvifController:
         # get list of supported features
         supported_features = []
 
-        if configs.DefaultContinuousPanTiltVelocitySpace:
+        if getattr(configs, "DefaultContinuousPanTiltVelocitySpace", None):
             supported_features.append("pt")
 
-        if configs.DefaultContinuousZoomVelocitySpace:
+        if getattr(configs, "DefaultContinuousZoomVelocitySpace", None):
             supported_features.append("zoom")
 
-        if configs.DefaultRelativePanTiltTranslationSpace:
+        if getattr(configs, "DefaultRelativePanTiltTranslationSpace", None):
             supported_features.append("pt-r")
 
-        if configs.DefaultRelativeZoomTranslationSpace:
+        if getattr(configs, "DefaultRelativeZoomTranslationSpace", None):
             supported_features.append("zoom-r")
             if (
                 self.config.cameras[camera_name].onvif.autotracking.enabled_in_config
@@ -348,14 +353,13 @@ class OnvifController:
                             f"Disabling autotracking zooming for {camera_name}: Relative zoom not supported. Exception: {e}"
                         )
 
-        if configs.DefaultAbsoluteZoomPositionSpace:
+        if getattr(configs, "DefaultAbsoluteZoomPositionSpace", None):
             supported_features.append("zoom-a")
             if (
                 self.config.cameras[camera_name].onvif.autotracking.enabled_in_config
                 and self.config.cameras[camera_name].onvif.autotracking.enabled
             ):
                 try:
-                    # get camera's zoom limits from onvif config
                     self.cams[camera_name]["absolute_zoom_range"] = (
                         ptz_config.Spaces.AbsoluteZoomPositionSpace[0]
                     )
@@ -369,7 +373,7 @@ class OnvifController:
                             f"Disabling autotracking zooming for {camera_name}: Absolute zoom not supported. Exception: {e}"
                         )
 
-        if configs.DefaultAbsolutePanTiltPositionSpace:
+        if getattr(configs, "DefaultAbsolutePanTiltPositionSpace", None):
             supported_features.append("pt-a")
             if (
                 self.config.cameras[camera_name].onvif.autotracking.enabled_in_config
@@ -397,7 +401,19 @@ class OnvifController:
             )
 
         self.cams[camera_name]["features"] = supported_features
+
+        if profile and profile.PTZConfiguration:
+            try:
+                ptz_service = self.cams[camera_name]["ptz"]
+                home_request = ptz_service.create_type("GoHome")
+                home_request.ProfileToken = profile.token
+                await ptz_service.GoHome(home_request)
+                logger.info(f"Camera {camera_name} homed on startup")
+            except (Fault, ONVIFError, TransportError, Exception) as e:
+                logger.debug(f"Could not home camera {camera_name}: {e}")
+
         self.cams[camera_name]["init"] = True
+        self.cams[camera_name]["position_tracking"] = {"pan": 0.5, "tilt": 0.5, "zoom": 0}
         return True
 
     async def _stop(self, camera_name: str) -> None:
@@ -418,7 +434,11 @@ class OnvifController:
             )
             await self._stop(camera_name)
 
-        if "pt" not in self.cams[camera_name]["features"]:
+        features = self.cams[camera_name]["features"]
+        has_continuous_pt = "pt" in features
+        has_relative_pt = "pt-r" in features
+
+        if not has_continuous_pt and not has_relative_pt:
             logger.error(f"{camera_name} does not support ONVIF pan/tilt movement.")
             return
 
@@ -426,28 +446,41 @@ class OnvifController:
         move_request = self.cams[camera_name]["move_request"]
 
         if command == OnvifCommandEnum.move_left:
-            move_request.Velocity = {"PanTilt": {"x": -0.5, "y": 0}}
+            velocity = {"PanTilt": {"x": -0.5, "y": 0}}
         elif command == OnvifCommandEnum.move_right:
-            move_request.Velocity = {"PanTilt": {"x": 0.5, "y": 0}}
+            velocity = {"PanTilt": {"x": 0.5, "y": 0}}
         elif command == OnvifCommandEnum.move_up:
-            move_request.Velocity = {
-                "PanTilt": {
-                    "x": 0,
-                    "y": 0.5,
-                }
-            }
+            velocity = {"PanTilt": {"x": 0, "y": 0.5}}
         elif command == OnvifCommandEnum.move_down:
-            move_request.Velocity = {
-                "PanTilt": {
-                    "x": 0,
-                    "y": -0.5,
-                }
-            }
+            velocity = {"PanTilt": {"x": 0, "y": -0.5}}
+        else:
+            return
 
-        try:
-            await self.cams[camera_name]["ptz"].ContinuousMove(move_request)
-        except (Fault, ONVIFError, TransportError, Exception) as e:
-            logger.warning(f"Onvif sending move request to {camera_name} failed: {e}")
+        if has_continuous_pt:
+            move_request.Velocity = velocity
+            try:
+                await self.cams[camera_name]["ptz"].ContinuousMove(move_request)
+            except (Fault, ONVIFError, TransportError, Exception) as e:
+                logger.warning(f"Onvif ContinuousMove to {camera_name} failed: {e}")
+        elif has_relative_pt:
+            try:
+                relative_request = self.cams[camera_name]["relative_move_request"]
+                speed = {"PanTilt": {"x": 0.5, "y": 0.5}}
+                translation = {
+                    "PanTilt": {
+                        "x": velocity["PanTilt"]["x"] * 0.5,
+                        "y": velocity["PanTilt"]["y"] * 0.5,
+                    }
+                }
+                await self.cams[camera_name]["ptz"].RelativeMove(
+                    {
+                        "ProfileToken": relative_request.ProfileToken,
+                        "Translation": translation,
+                        "Speed": speed,
+                    }
+                )
+            except (Fault, ONVIFError, TransportError, Exception) as e:
+                logger.warning(f"Onvif RelativeMove to {camera_name} failed: {e}")
 
     async def _move_relative(self, camera_name: str, pan, tilt, zoom, speed) -> None:
         if "pt-r-fov" not in self.cams[camera_name]["features"]:
@@ -560,7 +593,11 @@ class OnvifController:
             )
             await self._stop(camera_name)
 
-        if "zoom" not in self.cams[camera_name]["features"]:
+        features = self.cams[camera_name]["features"]
+        has_continuous_zoom = "zoom" in features
+        has_relative_zoom = "zoom-r" in features
+
+        if not has_continuous_zoom and not has_relative_zoom:
             logger.error(f"{camera_name} does not support ONVIF zooming.")
             return
 
@@ -568,11 +605,18 @@ class OnvifController:
         move_request = self.cams[camera_name]["move_request"]
 
         if command == OnvifCommandEnum.zoom_in:
-            move_request.Velocity = {"Zoom": {"x": 0.5}}
+            velocity = {"Zoom": {"x": 0.5}}
         elif command == OnvifCommandEnum.zoom_out:
-            move_request.Velocity = {"Zoom": {"x": -0.5}}
+            velocity = {"Zoom": {"x": -0.5}}
+        else:
+            return
 
-        await self.cams[camera_name]["ptz"].ContinuousMove(move_request)
+        if has_continuous_zoom:
+            move_request.Velocity = velocity
+            try:
+                await self.cams[camera_name]["ptz"].ContinuousMove(move_request)
+            except (Fault, ONVIFError, TransportError, Exception) as e:
+                logger.warning(f"Onvif ContinuousMove zoom to {camera_name} failed: {e}")
 
     async def _zoom_absolute(self, camera_name: str, zoom, speed) -> None:
         if "zoom-a" not in self.cams[camera_name]["features"]:
