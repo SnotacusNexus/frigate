@@ -10,6 +10,17 @@ __all__ = ["MotionConfig", "PtzMaskConfig", "check_ptz_mask_collisions"]
 logger = logging.getLogger(__name__)
 
 
+class PtzMaskConfig(FrigateBaseModel):
+    """Configuration for a PTZ-aware motion mask."""
+    coordinates: str = Field(default="", title="Coordinates polygon for the motion mask.")
+    pan_min: Optional[float] = Field(default=None, description="Minimum pan position (0-1)")
+    pan_max: Optional[float] = Field(default=None, description="Maximum pan position (0-1)")
+    tilt_min: Optional[float] = Field(default=None, description="Minimum tilt position (0-1)")
+    tilt_max: Optional[float] = Field(default=None, description="Maximum tilt position (0-1)")
+    spherical_coords: bool = Field(default=False, description="Use spherical coordinates (degrees) instead of relative (0-1)")
+    rasterize_at_capture: bool = Field(default=False, description="Rasterize mask at capture time based on current PTZ position")
+
+
 def check_ptz_mask_collisions(
     ptz_masks: dict[str, PtzMaskConfig]
 ) -> list[dict]:
@@ -77,17 +88,6 @@ def check_ptz_mask_collisions(
                 })
 
     return collisions
-
-
-class PtzMaskConfig(FrigateBaseModel):
-    """Configuration for a PTZ-aware motion mask."""
-    coordinates: str = Field(default="", title="Coordinates polygon for the motion mask.")
-    pan_min: Optional[float] = Field(default=None, description="Minimum pan position (0-1)")
-    pan_max: Optional[float] = Field(default=None, description="Maximum pan position (0-1)")
-    tilt_min: Optional[float] = Field(default=None, description="Minimum tilt position (0-1)")
-    tilt_max: Optional[float] = Field(default=None, description="Maximum tilt position (0-1)")
-    spherical_coords: bool = Field(default=False, description="Use spherical coordinates (degrees) instead of relative (0-1)")
-    rasterize_at_capture: bool = Field(default=False, description="Rasterize mask at capture time based on current PTZ position")
 
 
 class MotionConfig(FrigateBaseModel):
