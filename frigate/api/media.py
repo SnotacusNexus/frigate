@@ -151,6 +151,64 @@ async def camera_ptz_position(request: Request, camera_name: str):
         )
 
 
+@router.post("/{camera_name}/ptz/home")
+async def camera_ptz_set_home(request: Request, camera_name: str):
+    if camera_name in request.app.frigate_config.cameras:
+        if not hasattr(request.app, "onvif"):
+            return JSONResponse(
+                content={"success": False, "message": "ONVIF not configured"},
+                status_code=400,
+            )
+
+        future = asyncio.run_coroutine_threadsafe(
+            request.app.onvif.set_home_position(camera_name),
+            request.app.onvif.loop,
+        )
+        try:
+            future.result(timeout=10)
+        except Exception as e:
+            return JSONResponse(
+                content={"success": False, "message": str(e)},
+                status_code=500,
+            )
+
+        return JSONResponse(content={"success": True, "message": "Home position set"})
+    else:
+        return JSONResponse(
+            content={"success": False, "message": "Camera not found"},
+            status_code=404,
+        )
+
+
+@router.post("/{camera_name}/ptz/home/goto")
+async def camera_ptz_goto_home(request: Request, camera_name: str):
+    if camera_name in request.app.frigate_config.cameras:
+        if not hasattr(request.app, "onvif"):
+            return JSONResponse(
+                content={"success": False, "message": "ONVIF not configured"},
+                status_code=400,
+            )
+
+        future = asyncio.run_coroutine_threadsafe(
+            request.app.onvif.goto_home(camera_name),
+            request.app.onvif.loop,
+        )
+        try:
+            future.result(timeout=10)
+        except Exception as e:
+            return JSONResponse(
+                content={"success": False, "message": str(e)},
+                status_code=500,
+            )
+
+        return JSONResponse(content={"success": True, "message": "Moved to home position"})
+    else:
+        return JSONResponse(
+            content={"success": False, "message": "Camera not found"},
+            status_code=404,
+        )
+
+
 @router.get("/{camera_name}/latest.{extension}")
 def latest_frame(
     request: Request,

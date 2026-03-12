@@ -33,6 +33,8 @@ class OnvifCommandEnum(str, Enum):
     stop = "stop"
     zoom_in = "zoom_in"
     zoom_out = "zoom_out"
+    home = "home"
+    set_home = "set_home"
 
 
 class OnvifController:
@@ -403,14 +405,37 @@ class OnvifController:
         self.cams[camera_name]["features"] = supported_features
 
         if profile and profile.PTZConfiguration:
-            try:
-                ptz_service = self.cams[camera_name]["ptz"]
-                home_request = ptz_service.create_type("GoHome")
-                home_request.ProfileToken = profile.token
-                await ptz_service.GoHome(home_request)
-                logger.info(f"Camera {camera_name} homed on startup")
-            except (Fault, ONVIFError, TransportError, Exception) as e:
-                logger.debug(f"Could not home camera {camera_name}: {e}")
+            cam_config = self.config.cameras[camera_name].onvif
+            if cam_config.calibrate_on_startup:
+                try:
+                    ptz_service = self.cams[camera_name]["ptz"]
+                    home_request = ptz_service.create_type("GoHome")
+                    home_request.ProfileToken = profile.token
+                    await ptz_service.GoHome(home_request)
+                    logger.info(f"Camera {camera_name} homed on startup")
+                except (Fault, ONVIFError, TransportError, Exception) as e:
+                    logger.debug(f"Could not home camera {camera_name}: {e}")
+
+                if cam_config.home_position:
+                    try:
+                        await self._move_to_absolute_position(
+                            camera_name,
+                            cam_config.home_position.get("pan", 0.5),
+                            cam_config.home_position.get("tilt", 0.5),
+                            cam_config.home_position.get("zoom", 0),
+                            1.0,
+                        )
+                        logger.info(
+                            f"Camera {camera_name} moved to home position: {cam_config.home_position}"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not move camera {camera_name} to home position: {e}"
+                        )
+
+                self.ptz_metrics[camera_name].relative_pan.value = 0
+                self.ptz_metrics[camera_name].relative_tilt.value = 0
+                self.ptz_metrics[camera_name].relative_zoom.value = 0
 
         self.cams[camera_name]["init"] = True
         self.cams[camera_name]["position_tracking"] = {"pan": 0.5, "tilt": 0.5, "zoom": 0}
@@ -661,6 +686,119 @@ class OnvifController:
 
         self.cams[camera_name]["active"] = False
 
+    async def _move_to_absolute_position(
+        self, camera_name: str, pan: float, tilt: float, zoom: float, speed: float
+    ) -> None:
+        if "pt-a" not in self.cams[camera_name]["features"]:
+            logger.error(
+                f"{camera_name} does not support ONVIF AbsoluteMove pan/tilt."
+            )
+            return
+
+        if self.cams[camera_name]["active"]:
+            logger.warning(
+                f"{camera_name} is already performing an action, not moving..."
+            )
+            return
+
+        self.cams[camera_name]["active"] = True
+        move_request = self.cams[camera_name]["absolute_move_request"]
+
+        pan = numpy.interp(
+            pan,
+            [0, 1],
+            [
+                self.cams[camera_name]["absolute_pan_tilt_range"]["XRange"]["Min"],
+                self.cams[camera_name]["absolute_pan_tilt_range"]["XRange"]["Max"],
+            ],
+        )
+        tilt = numpy.interp(
+            tilt,
+            [0, 1],
+            [
+                self.cams[camera_name]["absolute_pan_tilt_range"]["YRange"]["Min"],
+                self.cams[camera_name]["absolute_pan_tilt_range"]["YRange"]["Max"],
+            ],
+        )
+
+        move_request.Position = {
+            "PanTilt": {"x": pan, "y": tilt},
+        }
+
+        if "zoom-a" in self.cams[camera_name]["features"]:
+            zoom = numpy.interp(
+                zoom,
+                [0, 1],
+                [
+                    self.cams[camera_name]["absolute_zoom_range"]["XRange"]["Min"],
+                    self.cams[camera_name]["absolute_zoom_range"]["XRange"]["Max"],
+                ],
+            )
+            move_request.Position["Zoom"] = zoom
+
+        if "zoom-a" in self.cams[camera_name]["features"]:
+            move_request.Speed = {"PanTilt": {"x": speed, "y": speed}, "Zoom": speed}
+        else:
+            move_request.Speed = {"PanTilt": {"x": speed, "y": speed}}
+
+        logger.debug(
+            f"{camera_name}: Absolute move to pan: {pan}, tilt: {tilt}, zoom: {zoom}"
+        )
+
+        await self.cams[camera_name]["ptz"].AbsoluteMove(move_request)
+
+        self.ptz_metrics[camera_name].relative_pan.value = 0
+        self.ptz_metrics[camera_name].relative_tilt.value = 0
+        self.ptz_metrics[camera_name].relative_zoom.value = 0
+
+        self.cams[camera_name]["active"] = False
+
+    async def set_home_position(self, camera_name: str) -> None:
+        self.ptz_metrics[camera_name].home_pan.value = (
+            self.ptz_metrics[camera_name].relative_pan.value
+        )
+        self.ptz_metrics[camera_name].home_tilt.value = (
+            self.ptz_metrics[camera_name].relative_tilt.value
+        )
+        self.ptz_metrics[camera_name].home_zoom.value = (
+            self.ptz_metrics[camera_name].relative_zoom.value
+        )
+        logger.info(
+            f"Camera {camera_name} home position set to: "
+            f"pan={self.ptz_metrics[camera_name].home_pan.value}, "
+            f"tilt={self.ptz_metrics[camera_name].home_tilt.value}, "
+            f"zoom={self.ptz_metrics[camera_name].home_zoom.value}"
+        )
+
+    async def goto_home(self, camera_name: str) -> None:
+        if "pt-a" not in self.cams[camera_name]["features"]:
+            logger.error(
+                f"{camera_name} does not support ONVIF AbsoluteMove pan/tilt."
+            )
+            return
+
+        home_pan = self.ptz_metrics[camera_name].home_pan.value
+        home_tilt = self.ptz_metrics[camera_name].home_tilt.value
+        home_zoom = self.ptz_metrics[camera_name].home_zoom.value
+
+        if home_pan == 0 and home_tilt == 0 and home_zoom == 0:
+            logger.info(f"Camera {camera_name} home position is at origin, using GoHome")
+            move_request = self.cams[camera_name]["move_request"]
+            try:
+                home_request = self.cams[camera_name]["ptz"].create_type("GoHome")
+                home_request.ProfileToken = move_request.ProfileToken
+                await self.cams[camera_name]["ptz"].GoHome(home_request)
+            except (Fault, ONVIFError, TransportError, Exception) as e:
+                logger.warning(f"Could not go to home for {camera_name}: {e}")
+        else:
+            await self._move_to_absolute_position(
+                camera_name, home_pan, home_tilt, home_zoom, 1.0
+            )
+
+        self.ptz_metrics[camera_name].relative_pan.value = 0
+        self.ptz_metrics[camera_name].relative_tilt.value = 0
+        self.ptz_metrics[camera_name].relative_zoom.value = 0
+
     async def handle_command_async(
         self, camera_name: str, command: OnvifCommandEnum, param: str = ""
     ) -> None:
@@ -689,6 +827,10 @@ class OnvifController:
                 or command == OnvifCommandEnum.zoom_out
             ):
                 await self._zoom(camera_name, command)
+            elif command == OnvifCommandEnum.home:
+                await self.goto_home(camera_name)
+            elif command == OnvifCommandEnum.set_home:
+                await self.set_home_position(camera_name)
             else:
                 await self._move(camera_name, command)
         except (Fault, ONVIFError, TransportError, Exception) as e:

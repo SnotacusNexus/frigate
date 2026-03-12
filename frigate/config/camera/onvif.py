@@ -85,3 +85,11 @@ class OnvifConfig(FrigateBaseModel):
         default=False,
         title="Onvif Ignore Time Synchronization Mismatch Between Camera and Server",
     )
+    home_position: Optional[dict] = Field(
+        default=None,
+        description="Home position: {pan, tilt, zoom}",
+    )
+    calibrate_on_startup: bool = Field(
+        default=True,
+        description="Home camera on Frigate startup",
+    )
