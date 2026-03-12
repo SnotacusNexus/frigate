@@ -37,9 +37,17 @@ export function PolygonCanvas({
 }: PolygonCanvasProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [image, setImage] = useState<HTMLImageElement | undefined>();
+  const [refreshKey, setRefreshKey] = useState(0);
   const imageRef = useRef<Konva.Image | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const apiHost = useApiHost();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const videoElement = useMemo(() => {
     if (camera && width && height) {
@@ -47,12 +55,12 @@ export function PolygonCanvas({
       const element = new window.Image();
       element.width = width;
       element.height = height;
-      element.src = `${apiHost}api/${camera}/latest.webp?cache=${Date.now()}`;
+      element.src = `${apiHost}api/${camera}/latest.webp?cache=${refreshKey}`;
       return element;
     }
     // we know that these deps are correct
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [camera, apiHost]);
+  }, [camera, apiHost, refreshKey]);
 
   useEffect(() => {
     if (!videoElement) {

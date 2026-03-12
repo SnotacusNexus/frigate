@@ -99,33 +99,31 @@ export default function PtzMaskEditor({
 
   const handleMoveLeft = useCallback(() => {
     sendPtz("MOVE_LEFT");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleMoveRight = useCallback(() => {
     sendPtz("MOVE_RIGHT");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleMoveUp = useCallback(() => {
     sendPtz("MOVE_UP");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleMoveDown = useCallback(() => {
     sendPtz("MOVE_DOWN");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleZoomIn = useCallback(() => {
     sendPtz("ZOOM_IN");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleZoomOut = useCallback(() => {
     sendPtz("ZOOM_OUT");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
+
+  const handleStop = useCallback(() => {
+    sendPtz("STOP");
+  }, [sendPtz]);
 
   const capturePtzPosition = useCallback(() => {
     if (activePolygonIndex !== undefined && polygons && currentPtzPosition) {
@@ -247,7 +245,7 @@ export default function PtzMaskEditor({
         );
       }
 
-      if (polygon.ptzRange?.tilt_max !== undefined) {
+        if (polygon.ptzRange?.tilt_max !== undefined) {
         queryParams.append(
           `cameras.${camera}.motion.ptz_masks.${maskName}.tilt_max`,
           polygon.ptzRange.tilt_max.toString(),
@@ -265,6 +263,9 @@ export default function PtzMaskEditor({
             position: "top-center",
           });
           updateConfig("config");
+          if (onSave) {
+            onSave();
+          }
         } else {
           toast.error(
             t("toast.save.error.title", {
@@ -289,12 +290,14 @@ export default function PtzMaskEditor({
       .finally(() => {
         setIsLoading(false);
       });
-  }, [camera, polygons, scaledWidth, scaledHeight, updateConfig, setIsLoading, t]);
+  }, [camera, polygons, scaledWidth, scaledHeight, updateConfig, setIsLoading, t, onSave]);
 
   return (
     <>
       <Toaster position="top-center" closeButton={true} />
       <div className="flex flex-col gap-4">
+        <Heading as="h3">{t("ptzMask.editor") || "PTZ Masks"}</Heading>
+        
         <PtzPositionDisplay
           position={currentPtzPosition}
           onRefresh={fetchPtzPosition}
@@ -307,6 +310,7 @@ export default function PtzMaskEditor({
           onMoveDown={handleMoveDown}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
+          onStop={handleStop}
         />
 
         <Separator className="bg-secondary" />
@@ -334,6 +338,7 @@ export default function PtzMaskEditor({
                 onMoveDown={handleMoveDown}
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
+                onStop={handleStop}
               />
             </div>
           </div>
@@ -522,6 +527,7 @@ interface PtzControlButtonsProps {
   onMoveDown: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onStop: () => void;
 }
 
 function PtzControlButtons({
@@ -531,6 +537,7 @@ function PtzControlButtons({
   onMoveDown,
   onZoomIn,
   onZoomOut,
+  onStop,
 }: PtzControlButtonsProps) {
   const { t } = useTranslation(["views/live"]);
 
@@ -545,7 +552,17 @@ function PtzControlButtons({
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={onMoveLeft}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onMoveLeft();
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      onMoveLeft();
+                    }}
+                    onMouseUp={onStop}
+                    onMouseLeave={onStop}
+                    onTouchEnd={onStop}
                     aria-label={t("ptz.move.left.label") || "Move Left"}
                   >
                     <FaAngleLeft />
@@ -564,7 +581,17 @@ function PtzControlButtons({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={onMoveUp}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onMoveUp();
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        onMoveUp();
+                      }}
+                      onMouseUp={onStop}
+                      onMouseLeave={onStop}
+                      onTouchEnd={onStop}
                       aria-label={t("ptz.move.up.label") || "Move Up"}
                     >
                       <FaAngleUp />
@@ -581,7 +608,17 @@ function PtzControlButtons({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={onMoveDown}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onMoveDown();
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        onMoveDown();
+                      }}
+                      onMouseUp={onStop}
+                      onMouseLeave={onStop}
+                      onTouchEnd={onStop}
                       aria-label={t("ptz.move.down.label") || "Move Down"}
                     >
                       <FaAngleDown />
@@ -600,7 +637,17 @@ function PtzControlButtons({
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={onMoveRight}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onMoveRight();
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      onMoveRight();
+                    }}
+                    onMouseUp={onStop}
+                    onMouseLeave={onStop}
+                    onTouchEnd={onStop}
                     aria-label={t("ptz.move.right.label") || "Move Right"}
                   >
                     <FaAngleRight />
@@ -623,7 +670,17 @@ function PtzControlButtons({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={onZoomIn}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onZoomIn();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onZoomIn();
+                  }}
+                  onMouseUp={onStop}
+                  onMouseLeave={onStop}
+                  onTouchEnd={onStop}
                   aria-label={t("ptz.zoom.in.label") || "Zoom In"}
                 >
                   <MdZoomIn />
@@ -640,7 +697,17 @@ function PtzControlButtons({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={onZoomOut}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onZoomOut();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onZoomOut();
+                  }}
+                  onMouseUp={onStop}
+                  onMouseLeave={onStop}
+                  onTouchEnd={onStop}
                   aria-label={t("ptz.zoom.out.label") || "Zoom Out"}
                 >
                   <MdZoomOut />
@@ -664,6 +731,7 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
   onMoveDown,
   onZoomIn,
   onZoomOut,
+  onStop,
 }: PtzControlButtonsProps) {
   const { t } = useTranslation(["views/live"]);
 
@@ -678,7 +746,17 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
                   <Button
                     variant="secondary"
                     size="icon"
-                    onClick={onMoveLeft}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onMoveLeft();
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      onMoveLeft();
+                    }}
+                    onMouseUp={onStop}
+                    onMouseLeave={onStop}
+                    onTouchEnd={onStop}
                     aria-label={t("ptz.move.left.label") || "Move Left"}
                   >
                     <FaAngleLeft />
@@ -697,7 +775,17 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
                     <Button
                       variant="secondary"
                       size="icon"
-                      onClick={onMoveUp}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onMoveUp();
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        onMoveUp();
+                      }}
+                      onMouseUp={onStop}
+                      onMouseLeave={onStop}
+                      onTouchEnd={onStop}
                       aria-label={t("ptz.move.up.label") || "Move Up"}
                     >
                       <FaAngleUp />
@@ -714,7 +802,17 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
                     <Button
                       variant="secondary"
                       size="icon"
-                      onClick={onMoveDown}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onMoveDown();
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        onMoveDown();
+                      }}
+                      onMouseUp={onStop}
+                      onMouseLeave={onStop}
+                      onTouchEnd={onStop}
                       aria-label={t("ptz.move.down.label") || "Move Down"}
                     >
                       <FaAngleDown />
@@ -733,7 +831,17 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
                   <Button
                     variant="secondary"
                     size="icon"
-                    onClick={onMoveRight}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onMoveRight();
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      onMoveRight();
+                    }}
+                    onMouseUp={onStop}
+                    onMouseLeave={onStop}
+                    onTouchEnd={onStop}
                     aria-label={t("ptz.move.right.label") || "Move Right"}
                   >
                     <FaAngleRight />
@@ -756,7 +864,17 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
                 <Button
                   variant="secondary"
                   size="icon"
-                  onClick={onZoomIn}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onZoomIn();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onZoomIn();
+                  }}
+                  onMouseUp={onStop}
+                  onMouseLeave={onStop}
+                  onTouchEnd={onStop}
                   aria-label={t("ptz.zoom.in.label") || "Zoom In"}
                 >
                   <MdZoomIn />
@@ -773,7 +891,17 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
                 <Button
                   variant="secondary"
                   size="icon"
-                  onClick={onZoomOut}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onZoomOut();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onZoomOut();
+                  }}
+                  onMouseUp={onStop}
+                  onMouseLeave={onStop}
+                  onTouchEnd={onStop}
                   aria-label={t("ptz.zoom.out.label") || "Zoom Out"}
                 >
                   <MdZoomOut />
@@ -834,33 +962,31 @@ export function PtzMaskCanvas({
 
   const handleMoveLeft = useCallback(() => {
     sendPtz("MOVE_LEFT");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleMoveRight = useCallback(() => {
     sendPtz("MOVE_RIGHT");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleMoveUp = useCallback(() => {
     sendPtz("MOVE_UP");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleMoveDown = useCallback(() => {
     sendPtz("MOVE_DOWN");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleZoomIn = useCallback(() => {
     sendPtz("ZOOM_IN");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
 
   const handleZoomOut = useCallback(() => {
     sendPtz("ZOOM_OUT");
-    setTimeout(fetchPtzPosition, 500);
-  }, [sendPtz, fetchPtzPosition]);
+  }, [sendPtz]);
+
+  const handleStop = useCallback(() => {
+    sendPtz("STOP");
+  }, [sendPtz]);
 
   const localContainerRef = useRef<HTMLDivElement>(null);
 
@@ -887,6 +1013,7 @@ export function PtzMaskCanvas({
           onMoveDown={handleMoveDown}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
+          onStop={handleStop}
         />
       </div>
       <div className="absolute top-4 right-4 rounded-lg bg-black/60 p-2 backdrop-blur-sm">
@@ -1076,6 +1203,9 @@ export function PtzMaskEditPaneMinimal({
             position: "top-center",
           });
           updateConfig("config");
+          if (onSave) {
+            onSave();
+          }
         } else {
           toast.error(
             t("toast.save.error.title", {
@@ -1100,7 +1230,7 @@ export function PtzMaskEditPaneMinimal({
       .finally(() => {
         setIsLoading(false);
       });
-  }, [camera, polygons, scaledWidth, scaledHeight, updateConfig, setIsLoading, t]);
+  }, [camera, polygons, scaledWidth, scaledHeight, updateConfig, setIsLoading, t, onSave]);
 
   return (
     <>

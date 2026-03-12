@@ -58,7 +58,7 @@ export default function MasksAndZonesView({
 }: MasksAndZoneViewProps) {
   const { t } = useTranslation(["views/settings"]);
   const { getLocaleDocUrl } = useDocDomain();
-  const { data: config } = useSWR<FrigateConfig>("config");
+  const { data: config, mutate: updateConfig } = useSWR<FrigateConfig>("config");
   const [allPolygons, setAllPolygons] = useState<Polygon[]>([]);
   const [editingPolygons, setEditingPolygons] = useState<Polygon[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -206,7 +206,8 @@ export default function MasksAndZonesView({
       undefined,
       "masks_zones",
     );
-  }, [t, editingPolygons, setUnsavedChanges, addMessage]);
+    updateConfig();
+  }, [t, editingPolygons, setUnsavedChanges, addMessage, updateConfig]);
 
   useEffect(() => {
     if (isLoading) {
