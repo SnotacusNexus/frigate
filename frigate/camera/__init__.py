@@ -48,6 +48,9 @@ class PTZMetrics:
     zoom_level: Synchronized
     max_zoom: Synchronized
     min_zoom: Synchronized
+    relative_pan: Synchronized
+    relative_tilt: Synchronized
+    relative_zoom: Synchronized
 
     tracking_active: Event
     motor_stopped: Event
@@ -64,6 +67,9 @@ class PTZMetrics:
         self.zoom_level = mp.Value("d", 0)
         self.max_zoom = mp.Value("d", 0)
         self.min_zoom = mp.Value("d", 0)
+        self.relative_pan = mp.Value("d", 0)
+        self.relative_tilt = mp.Value("d", 0)
+        self.relative_zoom = mp.Value("d", 0)
 
         self.tracking_active = mp.Event()
         self.motor_stopped = mp.Event()

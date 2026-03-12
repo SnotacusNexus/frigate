@@ -487,6 +487,25 @@ class Dispatcher:
                 command = OnvifCommandEnum[payload.lower()]
                 param = ""
 
+            if camera_name in self.ptz_metrics:
+                ptz = self.ptz_metrics[camera_name]
+                if command == OnvifCommandEnum.move_left:
+                    ptz.relative_pan.value -= 1
+                elif command == OnvifCommandEnum.move_right:
+                    ptz.relative_pan.value += 1
+                elif command == OnvifCommandEnum.move_up:
+                    ptz.relative_tilt.value += 1
+                elif command == OnvifCommandEnum.move_down:
+                    ptz.relative_tilt.value -= 1
+                elif command == OnvifCommandEnum.zoom_in:
+                    ptz.relative_zoom.value += 1
+                elif command == OnvifCommandEnum.zoom_out:
+                    ptz.relative_zoom.value -= 1
+                elif command == OnvifCommandEnum.preset:
+                    ptz.relative_pan.value = 0
+                    ptz.relative_tilt.value = 0
+                    ptz.relative_zoom.value = 0
+
             self.onvif.handle_command(camera_name, command, param)
             logger.info(f"Setting ptz command to {command} for {camera_name}")
         except KeyError as k:

@@ -554,17 +554,11 @@ function PtzControlButtons({
   onZoomOut,
 }: PtzControlButtonsProps) {
   const { t } = useTranslation(["views/live"]);
-  const hasPanTilt = ptzInfo?.features?.includes("pt") ?? false;
-  const hasZoom = ptzInfo?.features?.includes("zoom") ?? false;
-
-  if (!ptzInfo) {
-    return <ActivityIndicator />;
-  }
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="flex items-center gap-2">
-        {hasPanTilt && (
+        {true && (
           <>
             <TooltipProvider>
               <Tooltip>
@@ -642,7 +636,7 @@ function PtzControlButtons({
         )}
       </div>
 
-      {hasZoom && (
+      {true && (
         <div className="flex gap-2">
           <TooltipProvider>
             <Tooltip>
@@ -694,15 +688,9 @@ const PtzOverlayControls = React.memo(function PtzOverlayControls({
   onZoomOut,
 }: PtzControlButtonsProps) {
   const { t } = useTranslation(["views/live"]);
-  const isLoading = !ptzInfo;
 
   return (
     <div className="flex flex-col items-center gap-2 rounded-lg bg-black/60 p-3 backdrop-blur-sm">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
-          <ActivityIndicator />
-        </div>
-      )}
       <div className="flex items-center gap-2">
         {true && (
           <>

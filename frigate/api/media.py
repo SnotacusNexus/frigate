@@ -130,9 +130,9 @@ async def camera_ptz_position(request: Request, camera_name: str):
     if camera_name in request.app.frigate_config.cameras:
         ptz_metrics = request.app.ptz_metrics
         if camera_name in ptz_metrics:
-            pan = ptz_metrics[camera_name].pan.value
-            tilt = ptz_metrics[camera_name].tilt.value
-            zoom = ptz_metrics[camera_name].zoom_level.value
+            pan = ptz_metrics[camera_name].relative_pan.value
+            tilt = ptz_metrics[camera_name].relative_tilt.value
+            zoom = ptz_metrics[camera_name].relative_zoom.value
             return JSONResponse(content={
                 "pan": pan,
                 "tilt": tilt,
