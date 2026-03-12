@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -266,21 +267,94 @@ class ImprovedMotionDetector(MotionDetector):
         """Update the motion mask based on current PTZ position."""
         if not hasattr(self.config, 'ptz_masks_rasterized') or not self.config.ptz_masks_rasterized:
             return
-        
+
         pan = self.ptz_metrics.pan.value
         tilt = self.ptz_metrics.tilt.value
-        
+
         ptz_masks = getattr(self.config, 'ptz_masks', None)
-        
+
         if not ptz_masks:
             return
-        
+
         horizontal_fov = getattr(self.config, 'horizontal_fov', 90.0)
         vertical_fov = getattr(self.config, 'vertical_fov', 60.0)
         pan_range = getattr(self.config, 'pan_range', (-180, 180))
         tilt_range = getattr(self.config, 'tilt_range', (-90, 90))
-        
-        active_coords = get_active_masks(
+
+        use_rasterized = getattr(self.config, 'ptz_masks_use_rasterized', False)
+
+        if use_rasterized:
+            active_masks = get_active_masks(
+                ptz_masks,
+                pan,
+                tilt,
+                horizontal_fov=horizontal_fov,
+                vertical_fov=vertical_fov,
+                pan_range=pan_range,
+                tilt_range=tilt_range,
+                return_rasterized=True,
+                frame_shape=(self.frame_shape[0], self.frame_shape[1]),
+            )
+
+            if active_masks:
+                combined_mask = np.ones(self.frame_shape, dtype=np.uint8) * 255
+                for mask in active_masks:
+                    combined_mask = np.minimum(combined_mask, mask)
+
+                resized_mask = cv2.resize(
+                    combined_mask,
+                    dsize=(self.motion_frame_size[1], self.motion_frame_size[0]),
+                    interpolation=cv2.INTER_AREA,
+                )
+                self.mask = np.where(resized_mask == [0])
+        else:
+            active_coords = get_active_masks(
+                ptz_masks,
+                pan,
+                tilt,
+                horizontal_fov=horizontal_fov,
+                vertical_fov=vertical_fov,
+                pan_range=pan_range,
+                tilt_range=tilt_range,
+            )
+
+            if active_coords:
+                dynamic_mask = create_mask(self.frame_shape, active_coords)
+                resized_mask = cv2.resize(
+                    dynamic_mask,
+                    dsize=(self.motion_frame_size[1], self.motion_frame_size[0]),
+                    interpolation=cv2.INTER_AREA,
+                )
+                self.mask = np.where(resized_mask == [0])
+
+    def get_rasterized_ptz_mask_at_capture(self, frame_shape: tuple[int, int]) -> Optional[np.ndarray]:
+        """
+        Get rasterized PTZ mask at capture time based on current PTZ position.
+
+        This method should be called at frame capture time to get the accurate
+        PTZ-position-aware mask rasterized at the current camera position.
+
+        Args:
+            frame_shape: Shape of the frame (height, width)
+
+        Returns:
+            Rasterized mask array (uint8) where 255 = not masked, 0 = masked,
+            or None if no PTZ masks are configured
+        """
+        ptz_masks = getattr(self.config, 'ptz_masks', None)
+
+        if not ptz_masks:
+            return None
+
+        pan = self.ptz_metrics.pan.value
+        tilt = self.ptz_metrics.tilt.value
+
+        horizontal_fov = getattr(self.config, 'horizontal_fov', 90.0)
+        vertical_fov = getattr(self.config, 'vertical_fov', 60.0)
+        pan_range = getattr(self.config, 'pan_range', (-180, 180))
+        tilt_range = getattr(self.config, 'tilt_range', (-90, 90))
+
+        active_masks = get_active_masks(
             ptz_masks,
             pan,
             tilt,
@@ -288,13 +362,15 @@ class ImprovedMotionDetector(MotionDetector):
             vertical_fov=vertical_fov,
             pan_range=pan_range,
             tilt_range=tilt_range,
+            return_rasterized=True,
+            frame_shape=frame_shape,
         )
-        
-        if active_coords:
-            dynamic_mask = create_mask(self.frame_shape, active_coords)
-            resized_mask = cv2.resize(
-                dynamic_mask,
-                dsize=(self.motion_frame_size[1], self.motion_frame_size[0]),
-                interpolation=cv2.INTER_AREA,
-            )
-            self.mask = np.where(resized_mask == [0])
+
+        if not active_masks:
+            return None
+
+        combined_mask = np.ones(frame_shape, dtype=np.uint8) * 255
+        for mask in active_masks:
+            combined_mask = np.minimum(combined_mask, mask)
+
+        return combined_mask

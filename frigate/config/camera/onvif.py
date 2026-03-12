@@ -103,6 +103,30 @@ class OnvifConfig(FrigateBaseModel):
     )
     pan_range: Annotated[tuple[float, float], Field(default=(-180, 180))] = (-180, 180)
     tilt_range: Annotated[tuple[float, float], Field(default=(-90, 90))] = (-90, 90)
+    custom_left: Optional[str] = Field(
+        default=None,
+        description="Custom ONVIF command for moving left (preset name or rel_pan_X_tilt_Y format)",
+    )
+    custom_right: Optional[str] = Field(
+        default=None,
+        description="Custom ONVIF command for moving right (preset name or rel_pan_X_tilt_Y format)",
+    )
+    custom_up: Optional[str] = Field(
+        default=None,
+        description="Custom ONVIF command for moving up (preset name or rel_pan_X_tilt_Y format)",
+    )
+    custom_down: Optional[str] = Field(
+        default=None,
+        description="Custom ONVIF command for moving down (preset name or rel_pan_X_tilt_Y format)",
+    )
+    custom_zoom_in: Optional[str] = Field(
+        default=None,
+        description="Custom ONVIF command for zooming in (preset name)",
+    )
+    custom_zoom_out: Optional[str] = Field(
+        default=None,
+        description="Custom ONVIF command for zooming out (preset name)",
+    )
 
     @model_validator(mode="after")
     def validate_ranges(self) -> "OnvifConfig":

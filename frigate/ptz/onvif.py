@@ -7,7 +7,7 @@ import time
 from enum import Enum
 from importlib.util import find_spec
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import numpy
 from onvif import ONVIFCamera, ONVIFError, ONVIFService
@@ -35,6 +35,12 @@ class OnvifCommandEnum(str, Enum):
     zoom_out = "zoom_out"
     home = "home"
     set_home = "set_home"
+    custom_left = "custom_left"
+    custom_right = "custom_right"
+    custom_up = "custom_up"
+    custom_down = "custom_down"
+    custom_zoom_in = "custom_zoom_in"
+    custom_zoom_out = "custom_zoom_out"
 
 
 class OnvifController:
@@ -799,6 +805,40 @@ class OnvifController:
         self.ptz_metrics[camera_name].relative_tilt.value = 0
         self.ptz_metrics[camera_name].relative_zoom.value = 0
 
+    async def _execute_custom_command(
+        self, camera_name: str, custom_command: Optional[str]
+    ) -> None:
+        """Execute a custom ONVIF command.
+
+        Args:
+            camera_name: The name of the camera
+            custom_command: The custom command string (preset name or rel_pan_X_tilt_Y format)
+        """
+        if not custom_command:
+            return
+
+        if custom_command.startswith("preset_") or custom_command in self.cams[camera_name]["presets"]:
+            await self._move_to_preset(camera_name, custom_command)
+        elif custom_command.startswith("rel_pan_") or custom_command.startswith("rel_tilt_"):
+            parts = custom_command.split("_")
+            if len(parts) >= 3 and parts[0] == "rel":
+                try:
+                    pan = 0.0
+                    tilt = 0.0
+                    for i in range(1, len(parts), 2):
+                        if i + 1 < len(parts):
+                            if parts[i] == "pan":
+                                pan = float(parts[i + 1])
+                            elif parts[i] == "tilt":
+                                tilt = float(parts[i + 1])
+                    await self._move_relative(camera_name, pan, tilt, 0, 1)
+                except (ValueError, IndexError) as e:
+                    logger.error(f"Failed to parse custom command '{custom_command}': {e}")
+            else:
+                logger.warning(f"Invalid custom command format: {custom_command}")
+        else:
+            logger.warning(f"Unknown custom command format: {custom_command}")
+
     async def handle_command_async(
         self, camera_name: str, command: OnvifCommandEnum, param: str = ""
     ) -> None:
@@ -811,9 +851,10 @@ class OnvifController:
             if not await self._init_onvif(camera_name):
                 return
 
+        onvif_config = self.config.cameras[camera_name].onvif
+
         try:
             if command == OnvifCommandEnum.init:
-                # already init
                 return
             elif command == OnvifCommandEnum.stop:
                 await self._stop(camera_name)
@@ -831,6 +872,42 @@ class OnvifController:
                 await self.goto_home(camera_name)
             elif command == OnvifCommandEnum.set_home:
                 await self.set_home_position(camera_name)
+            elif command == OnvifCommandEnum.custom_left:
+                custom_cmd = onvif_config.custom_left
+                if custom_cmd:
+                    await self._execute_custom_command(camera_name, custom_cmd)
+                else:
+                    await self._move(camera_name, OnvifCommandEnum.move_left)
+            elif command == OnvifCommandEnum.custom_right:
+                custom_cmd = onvif_config.custom_right
+                if custom_cmd:
+                    await self._execute_custom_command(camera_name, custom_cmd)
+                else:
+                    await self._move(camera_name, OnvifCommandEnum.move_right)
+            elif command == OnvifCommandEnum.custom_up:
+                custom_cmd = onvif_config.custom_up
+                if custom_cmd:
+                    await self._execute_custom_command(camera_name, custom_cmd)
+                else:
+                    await self._move(camera_name, OnvifCommandEnum.move_up)
+            elif command == OnvifCommandEnum.custom_down:
+                custom_cmd = onvif_config.custom_down
+                if custom_cmd:
+                    await self._execute_custom_command(camera_name, custom_cmd)
+                else:
+                    await self._move(camera_name, OnvifCommandEnum.move_down)
+            elif command == OnvifCommandEnum.custom_zoom_in:
+                custom_cmd = onvif_config.custom_zoom_in
+                if custom_cmd:
+                    await self._execute_custom_command(camera_name, custom_cmd)
+                else:
+                    await self._zoom(camera_name, OnvifCommandEnum.zoom_in)
+            elif command == OnvifCommandEnum.custom_zoom_out:
+                custom_cmd = onvif_config.custom_zoom_out
+                if custom_cmd:
+                    await self._execute_custom_command(camera_name, custom_cmd)
+                else:
+                    await self._zoom(camera_name, OnvifCommandEnum.zoom_out)
             else:
                 await self._move(camera_name, command)
         except (Fault, ONVIFError, TransportError, Exception) as e:

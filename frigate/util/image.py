@@ -1000,6 +1000,80 @@ def _normalize_angle(angle: float) -> float:
     return angle
 
 
+def rasterize_polygon_at_position(
+    coordinates: str,
+    pan: float,
+    tilt: float,
+    frame_shape: tuple[int, int],
+    horizontal_fov: float = 90.0,
+    vertical_fov: float = 60.0,
+    pan_range: tuple[float, float] = (-180, 180),
+    tilt_range: tuple[float, float] = (-90, 90),
+    spherical_coords: bool = False,
+) -> np.ndarray:
+    """
+    Rasterize a polygon mask at the current PTZ position.
+
+    Args:
+        coordinates: Polygon coordinates as comma-separated string (relative 0-1)
+        pan: Current pan position (0-1) or absolute angle in degrees
+        tilt: Current tilt position (0-1) or absolute angle in degrees
+        frame_shape: Shape of the frame (height, width)
+        horizontal_fov: Camera horizontal field of view in degrees
+        vertical_fov: Camera vertical field of view in degrees
+        pan_range: Pan range in degrees (min, max)
+        tilt_range: Tilt range in degrees (min, max)
+        spherical_coords: Whether coordinates are in spherical (degrees) or relative (0-1)
+
+    Returns:
+        Binary mask array (uint8) where 255 = not masked, 0 = masked
+    """
+    if not coordinates:
+        mask = np.ones(frame_shape, dtype=np.uint8) * 255
+        return mask
+
+    points = coordinates.split(",")
+
+    if spherical_coords:
+        absolute_pan = pan
+        absolute_tilt = tilt
+    else:
+        absolute_pan = relative_to_absolute(pan, pan_range[0], pan_range[1])
+        absolute_tilt = relative_to_absolute(tilt, tilt_range[0], tilt_range[1])
+
+    height, width = frame_shape
+    mask = np.ones(frame_shape, dtype=np.uint8) * 255
+
+    contour_points = []
+    for i in range(0, len(points), 2):
+        x_rel = float(points[i])
+        y_rel = float(points[i + 1])
+
+        if spherical_coords:
+            x_pan_center = absolute_pan
+            y_tilt_center = absolute_tilt
+
+            x_offset = (x_rel - 0.5) * horizontal_fov
+            y_offset = (y_rel - 0.5) * vertical_fov
+
+            x_abs = x_pan_center + x_offset
+            y_abs = y_tilt_center + y_offset
+
+            frame_x = ((x_abs - (absolute_pan - horizontal_fov / 2)) / horizontal_fov) * width
+            frame_y = ((y_abs - (absolute_tilt - vertical_fov / 2)) / vertical_fov) * height
+        else:
+            frame_x = x_rel * width
+            frame_y = y_rel * height
+
+        contour_points.append([int(frame_x), int(frame_y)])
+
+    if len(contour_points) >= 3:
+        contour = np.array(contour_points, dtype=np.int32)
+        cv2.fillPoly(mask, pts=[contour], color=(0))
+
+    return mask
+
+
 def get_active_masks(
     ptz_masks: dict,
     pan: float,
@@ -1008,6 +1082,8 @@ def get_active_masks(
     vertical_fov: float = 60.0,
     pan_range: tuple[float, float] = (-180, 180),
     tilt_range: tuple[float, float] = (-90, 90),
+    return_rasterized: bool = False,
+    frame_shape: Optional[tuple[int, int]] = None,
 ) -> list:
     """
     Get masks that should be active based on PTZ position.
@@ -1020,11 +1096,14 @@ def get_active_masks(
         vertical_fov: Camera vertical field of view in degrees
         pan_range: Pan range in degrees (min, max)
         tilt_range: Tilt range in degrees (min, max)
+        return_rasterized: If True, return rasterized mask arrays instead of coordinates
+        frame_shape: Shape of the frame (height, width) required for rasterization
 
     Returns:
-        List of mask coordinate strings that are active for the current position
+        List of mask coordinate strings or rasterized mask arrays depending on return_rasterized
     """
     active_coords = []
+    active_configs = []
 
     absolute_pan = relative_to_absolute(pan, pan_range[0], pan_range[1])
     absolute_tilt = relative_to_absolute(tilt, tilt_range[0], tilt_range[1])
@@ -1037,6 +1116,7 @@ def get_active_masks(
             tilt_min = mask_config.get("tilt_min")
             tilt_max = mask_config.get("tilt_max")
             spherical_coords = mask_config.get("spherical_coords", False)
+            rasterize_at_capture = mask_config.get("rasterize_at_capture", False)
         else:
             coordinates = mask_config.coordinates
             pan_min = mask_config.pan_min
@@ -1044,6 +1124,7 @@ def get_active_masks(
             tilt_min = mask_config.tilt_min
             tilt_max = mask_config.tilt_max
             spherical_coords = getattr(mask_config, "spherical_coords", False)
+            rasterize_at_capture = getattr(mask_config, "rasterize_at_capture", False)
 
         has_ptz_constraints = (
             pan_min is not None or
@@ -1055,6 +1136,7 @@ def get_active_masks(
         if not has_ptz_constraints:
             if coordinates:
                 active_coords.append(coordinates)
+                active_configs.append((coordinates, spherical_coords, rasterize_at_capture))
             continue
 
         if spherical_coords:
@@ -1083,6 +1165,7 @@ def get_active_masks(
                 mask_v_fov,
             ) and coordinates:
                 active_coords.append(coordinates)
+                active_configs.append((coordinates, spherical_coords, rasterize_at_capture))
         else:
             pan_in_range = (
                 (pan_min is None or pan >= pan_min) and
@@ -1095,6 +1178,28 @@ def get_active_masks(
 
             if pan_in_range and tilt_in_range and coordinates:
                 active_coords.append(coordinates)
+                active_configs.append((coordinates, spherical_coords, rasterize_at_capture))
+
+    if return_rasterized and frame_shape is not None:
+        rasterized_masks = []
+        for coords, spherical, rasterize in active_configs:
+            if rasterize:
+                mask = rasterize_polygon_at_position(
+                    coords,
+                    pan if spherical else absolute_pan,
+                    tilt if spherical else absolute_tilt,
+                    frame_shape,
+                    horizontal_fov=horizontal_fov,
+                    vertical_fov=vertical_fov,
+                    pan_range=pan_range,
+                    tilt_range=tilt_range,
+                    spherical_coords=spherical,
+                )
+                rasterized_masks.append(mask)
+            else:
+                mask = create_mask(frame_shape, coords)
+                rasterized_masks.append(mask)
+        return rasterized_masks
 
     return active_coords
 

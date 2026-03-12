@@ -1,10 +1,82 @@
+import logging
 from typing import Annotated, Any, Optional, Union
 
-from pydantic import Field, field_serializer
+from pydantic import Field, field_serializer, model_validator
 
 from ..base import FrigateBaseModel
 
-__all__ = ["MotionConfig", "PtzMaskConfig"]
+__all__ = ["MotionConfig", "PtzMaskConfig", "check_ptz_mask_collisions"]
+
+logger = logging.getLogger(__name__)
+
+
+def check_ptz_mask_collisions(
+    ptz_masks: dict[str, PtzMaskConfig]
+) -> list[dict]:
+    """
+    Check for overlapping pan/tilt ranges between PTZ masks.
+
+    Args:
+        ptz_masks: Dictionary of PTZ mask configurations keyed by mask ID.
+
+    Returns:
+        List of collision dictionaries with:
+        - mask1: First mask ID
+        - mask2: Second mask ID
+        - overlap_type: "pan", "tilt", or "both"
+        - overlap_pan: (min_overlap, max_overlap) if pan overlaps
+        - overlap_tilt: (min_overlap, max_overlap) if tilt overlaps
+    """
+    collisions = []
+    mask_ids = list(ptz_masks.keys())
+
+    for i, mask1_id in enumerate(mask_ids):
+        mask1 = ptz_masks[mask1_id]
+
+        for mask2_id in mask_ids[i + 1 :]:
+            mask2 = ptz_masks[mask2_id]
+
+            if mask1.spherical_coords != mask2.spherical_coords:
+                continue
+
+            pan_overlap = None
+            tilt_overlap = None
+            overlap_types = []
+
+            if (
+                mask1.pan_min is not None
+                and mask1.pan_max is not None
+                and mask2.pan_min is not None
+                and mask2.pan_max is not None
+            ):
+                pan_min_overlap = max(mask1.pan_min, mask2.pan_min)
+                pan_max_overlap = min(mask1.pan_max, mask2.pan_max)
+                if pan_min_overlap < pan_max_overlap:
+                    pan_overlap = (pan_min_overlap, pan_max_overlap)
+                    overlap_types.append("pan")
+
+            if (
+                mask1.tilt_min is not None
+                and mask1.tilt_max is not None
+                and mask2.tilt_min is not None
+                and mask2.tilt_max is not None
+            ):
+                tilt_min_overlap = max(mask1.tilt_min, mask2.tilt_min)
+                tilt_max_overlap = min(mask1.tilt_max, mask2.tilt_max)
+                if tilt_min_overlap < tilt_max_overlap:
+                    tilt_overlap = (tilt_min_overlap, tilt_max_overlap)
+                    overlap_types.append("tilt")
+
+            if overlap_types:
+                collisions.append({
+                    "mask1": mask1_id,
+                    "mask2": mask2_id,
+                    "overlap_type": "both" if len(overlap_types) == 2 else overlap_types[0],
+                    "overlap_pan": pan_overlap,
+                    "overlap_tilt": tilt_overlap,
+                })
+
+    return collisions
 
 
 class PtzMaskConfig(FrigateBaseModel):
@@ -15,6 +87,7 @@ class PtzMaskConfig(FrigateBaseModel):
     tilt_min: Optional[float] = Field(default=None, description="Minimum tilt position (0-1)")
     tilt_max: Optional[float] = Field(default=None, description="Maximum tilt position (0-1)")
     spherical_coords: bool = Field(default=False, description="Use spherical coordinates (degrees) instead of relative (0-1)")
+    rasterize_at_capture: bool = Field(default=False, description="Rasterize mask at capture time based on current PTZ position")
 
 
 class MotionConfig(FrigateBaseModel):
@@ -63,3 +136,15 @@ class MotionConfig(FrigateBaseModel):
     @field_serializer("raw_mask", when_used="json")
     def serialize_raw_mask(self, value: Any, info):
         return None
+
+    @model_validator(mode="after")
+    def check_ptz_mask_collisions(self):
+        if self.ptz_masks:
+            collisions = check_ptz_mask_collisions(self.ptz_masks)
+            if collisions:
+                for collision in collisions:
+                    logger.warning(
+                        f"PTZ mask collision detected: '{collision['mask1']}' overlaps with "
+                        f"'{collision['mask2']}' ({collision['overlap_type']})"
+                    )
+        return self
