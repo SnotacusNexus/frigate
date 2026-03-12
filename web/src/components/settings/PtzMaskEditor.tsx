@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import useSWR, { useSWRConfig } from "swr";
+import { useSWRConfig } from "swr";
 import axios from "axios";
 import { toast } from "sonner";
 import { FaAngleLeft, FaAngleRight, FaAngleUp, FaAngleDown } from "react-icons/fa";
