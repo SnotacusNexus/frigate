@@ -545,7 +545,7 @@ interface PtzControlButtonsProps {
 }
 
 function PtzControlButtons({
-  ptzInfo,
+  _ptzInfo,
   onMoveLeft,
   onMoveRight,
   onMoveUp,
@@ -679,7 +679,7 @@ function PtzControlButtons({
 }
 
 const PtzOverlayControls = React.memo(function PtzOverlayControls({
-  ptzInfo,
+  _ptzInfo,
   onMoveLeft,
   onMoveRight,
   onMoveUp,
