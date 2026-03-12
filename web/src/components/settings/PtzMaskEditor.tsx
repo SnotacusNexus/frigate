@@ -171,8 +171,6 @@ export default function PtzMaskEditor({
       return;
     }
 
-    const closeThreshold = Math.max(scaledWidth, scaledHeight) * 0.05;
-
     const validPolygons: PtzMaskPolygon[] = [];
     const invalidPolygons: string[] = [];
 
@@ -983,8 +981,6 @@ export function PtzMaskEditPaneMinimal({
     if (!scaledWidth || !scaledHeight || !polygons || !camera) {
       return;
     }
-
-    const closeThreshold = Math.max(scaledWidth, scaledHeight) * 0.05;
 
     const validPolygons: PtzMaskPolygon[] = [];
     const invalidPolygons: string[] = [];
