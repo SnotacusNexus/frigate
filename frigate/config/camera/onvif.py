@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Optional, Union
+from typing import Annotated, Optional, Union
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from ..base import FrigateBaseModel
 from ..env import EnvString
@@ -93,3 +93,21 @@ class OnvifConfig(FrigateBaseModel):
         default=True,
         description="Home camera on Frigate startup",
     )
+    horizontal_fov: float = Field(
+        default=90.0,
+        description="Camera horizontal field of view in degrees",
+    )
+    vertical_fov: float = Field(
+        default=60.0,
+        description="Camera vertical field of view in degrees",
+    )
+    pan_range: Annotated[tuple[float, float], Field(default=(-180, 180))] = (-180, 180)
+    tilt_range: Annotated[tuple[float, float], Field(default=(-90, 90))] = (-90, 90)
+
+    @model_validator(mode="after")
+    def validate_ranges(self) -> "OnvifConfig":
+        if self.pan_range[0] >= self.pan_range[1]:
+            raise ValueError("pan_range[0] must be less than pan_range[1]")
+        if self.tilt_range[0] >= self.tilt_range[1]:
+            raise ValueError("tilt_range[0] must be less than tilt_range[1]")
+        return self

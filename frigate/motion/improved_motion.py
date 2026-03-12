@@ -275,7 +275,20 @@ class ImprovedMotionDetector(MotionDetector):
         if not ptz_masks:
             return
         
-        active_coords = get_active_masks(ptz_masks, pan, tilt)
+        horizontal_fov = getattr(self.config, 'horizontal_fov', 90.0)
+        vertical_fov = getattr(self.config, 'vertical_fov', 60.0)
+        pan_range = getattr(self.config, 'pan_range', (-180, 180))
+        tilt_range = getattr(self.config, 'tilt_range', (-90, 90))
+        
+        active_coords = get_active_masks(
+            ptz_masks,
+            pan,
+            tilt,
+            horizontal_fov=horizontal_fov,
+            vertical_fov=vertical_fov,
+            pan_range=pan_range,
+            tilt_range=tilt_range,
+        )
         
         if active_coords:
             dynamic_mask = create_mask(self.frame_shape, active_coords)

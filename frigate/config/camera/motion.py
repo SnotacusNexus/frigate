@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 from pydantic import Field, field_serializer
 
@@ -14,6 +14,7 @@ class PtzMaskConfig(FrigateBaseModel):
     pan_max: Optional[float] = Field(default=None, description="Maximum pan position (0-1)")
     tilt_min: Optional[float] = Field(default=None, description="Minimum tilt position (0-1)")
     tilt_max: Optional[float] = Field(default=None, description="Maximum tilt position (0-1)")
+    spherical_coords: bool = Field(default=False, description="Use spherical coordinates (degrees) instead of relative (0-1)")
 
 
 class MotionConfig(FrigateBaseModel):
@@ -44,6 +45,16 @@ class MotionConfig(FrigateBaseModel):
     )
     raw_mask: Union[str, list[str]] = ""
     ptz_masks: dict[str, PtzMaskConfig] = Field(default={}, title="PTZ-aware motion masks")
+    horizontal_fov: float = Field(
+        default=90.0,
+        description="Camera horizontal field of view in degrees",
+    )
+    vertical_fov: float = Field(
+        default=60.0,
+        description="Camera vertical field of view in degrees",
+    )
+    pan_range: Annotated[tuple[float, float], Field(default=(-180, 180))] = (-180, 180)
+    tilt_range: Annotated[tuple[float, float], Field(default=(-90, 90))] = (-90, 90)
 
     @field_serializer("mask", when_used="json")
     def serialize_mask(self, value: Any, info):

@@ -704,10 +704,18 @@ class FrigateConfig(FrigateBaseModel):
                     frame_shape=camera_config.frame_shape
                 )
             else:
+                motion_dict = camera_config.motion.model_dump(exclude_unset=True, exclude={"mask"})
+
+                if camera_config.onvif:
+                    motion_dict.setdefault('horizontal_fov', camera_config.onvif.horizontal_fov)
+                    motion_dict.setdefault('vertical_fov', camera_config.onvif.vertical_fov)
+                    motion_dict.setdefault('pan_range', camera_config.onvif.pan_range)
+                    motion_dict.setdefault('tilt_range', camera_config.onvif.tilt_range)
+
                 camera_config.motion = RuntimeMotionConfig(
                     frame_shape=camera_config.frame_shape,
                     raw_mask=camera_config.motion.mask,
-                    **camera_config.motion.model_dump(exclude_unset=True, exclude={"mask"}),
+                    **motion_dict,
                 )
             camera_config.motion.enabled_in_config = camera_config.motion.enabled
 

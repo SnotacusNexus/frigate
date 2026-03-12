@@ -938,19 +938,96 @@ def add_mask(mask: str, mask_img: np.ndarray):
     cv2.fillPoly(mask_img, pts=[contour], color=(0))
 
 
-def get_active_masks(ptz_masks: dict, pan: float, tilt: float) -> list:
+def relative_to_absolute(relative: float, min_val: float, max_val: float) -> float:
+    """Convert relative position (0-1) to absolute angle using the range."""
+    return min_val + relative * (max_val - min_val)
+
+
+def is_point_in_view(
+    pan: float,
+    tilt: float,
+    mask_pan_center: float,
+    mask_tilt_center: float,
+    h_fov: float,
+    v_fov: float,
+) -> bool:
+    """
+    Check if a point (mask center) falls within the current camera view.
+
+    Args:
+        pan: Current camera pan angle in degrees
+        tilt: Current camera tilt angle in degrees
+        mask_pan_center: Mask center pan angle in degrees
+        mask_tilt_center: Mask center tilt angle in degrees
+        h_fov: Camera horizontal field of view in degrees
+        v_fov: Camera vertical field of view in degrees
+
+    Returns:
+        True if the mask center is within the current view
+    """
+    pan_min = pan - h_fov / 2
+    pan_max = pan + h_fov / 2
+    tilt_min = tilt - v_fov / 2
+    tilt_max = tilt + v_fov / 2
+
+    pan_in_view = _is_angle_in_range(mask_pan_center, pan_min, pan_max)
+    tilt_in_view = _is_angle_in_range(mask_tilt_center, tilt_min, tilt_max)
+
+    return pan_in_view and tilt_in_view
+
+
+def _is_angle_in_range(angle: float, min_val: float, max_val: float) -> bool:
+    """Check if angle is within range, handling 360-degree wraparound."""
+    if max_val - min_val >= 360:
+        return True
+
+    angle = _normalize_angle(angle)
+    min_val = _normalize_angle(min_val)
+    max_val = _normalize_angle(max_val)
+
+    if min_val <= max_val:
+        return min_val <= angle <= max_val
+    else:
+        return angle >= min_val or angle <= max_val
+
+
+def _normalize_angle(angle: float) -> float:
+    """Normalize angle to -180 to 180 range."""
+    while angle > 180:
+        angle -= 360
+    while angle < -180:
+        angle += 360
+    return angle
+
+
+def get_active_masks(
+    ptz_masks: dict,
+    pan: float,
+    tilt: float,
+    horizontal_fov: float = 90.0,
+    vertical_fov: float = 60.0,
+    pan_range: tuple[float, float] = (-180, 180),
+    tilt_range: tuple[float, float] = (-90, 90),
+) -> list:
     """
     Get masks that should be active based on PTZ position.
 
     Args:
         ptz_masks: Dictionary of mask_id to PtzMaskConfig
-        pan: Current pan position (0-1)
-        tilt: Current tilt position (0-1)
+        pan: Current pan position (0-1) or absolute angle in degrees if using spherical_coords
+        tilt: Current tilt position (0-1) or absolute angle in degrees if using spherical_coords
+        horizontal_fov: Camera horizontal field of view in degrees
+        vertical_fov: Camera vertical field of view in degrees
+        pan_range: Pan range in degrees (min, max)
+        tilt_range: Tilt range in degrees (min, max)
 
     Returns:
         List of mask coordinate strings that are active for the current position
     """
     active_coords = []
+
+    absolute_pan = relative_to_absolute(pan, pan_range[0], pan_range[1])
+    absolute_tilt = relative_to_absolute(tilt, tilt_range[0], tilt_range[1])
 
     for mask_id, mask_config in ptz_masks.items():
         if isinstance(mask_config, dict):
@@ -959,12 +1036,14 @@ def get_active_masks(ptz_masks: dict, pan: float, tilt: float) -> list:
             pan_max = mask_config.get("pan_max")
             tilt_min = mask_config.get("tilt_min")
             tilt_max = mask_config.get("tilt_max")
+            spherical_coords = mask_config.get("spherical_coords", False)
         else:
             coordinates = mask_config.coordinates
             pan_min = mask_config.pan_min
             pan_max = mask_config.pan_max
             tilt_min = mask_config.tilt_min
             tilt_max = mask_config.tilt_max
+            spherical_coords = getattr(mask_config, "spherical_coords", False)
 
         has_ptz_constraints = (
             pan_min is not None or
@@ -978,17 +1057,44 @@ def get_active_masks(ptz_masks: dict, pan: float, tilt: float) -> list:
                 active_coords.append(coordinates)
             continue
 
-        pan_in_range = (
-            (pan_min is None or pan >= pan_min) and
-            (pan_max is None or pan <= pan_max)
-        )
-        tilt_in_range = (
-            (tilt_min is None or tilt >= tilt_min) and
-            (tilt_max is None or tilt <= tilt_max)
-        )
+        if spherical_coords:
+            pan_min_abs = relative_to_absolute(pan_min if pan_min is not None else 0, pan_range[0], pan_range[1])
+            pan_max_abs = relative_to_absolute(pan_max if pan_max is not None else 1, pan_range[0], pan_range[1])
+            tilt_min_abs = relative_to_absolute(tilt_min if tilt_min is not None else 0, tilt_range[0], tilt_range[1])
+            tilt_max_abs = relative_to_absolute(tilt_max if tilt_max is not None else 1, tilt_range[0], tilt_range[1])
 
-        if pan_in_range and tilt_in_range and coordinates:
-            active_coords.append(coordinates)
+            mask_pan_center = (pan_min_abs + pan_max_abs) / 2
+            mask_tilt_center = (tilt_min_abs + tilt_max_abs) / 2
+
+            mask_h_fov = pan_max_abs - pan_min_abs
+            mask_v_fov = tilt_max_abs - tilt_min_abs
+
+            if mask_h_fov == 0:
+                mask_h_fov = horizontal_fov
+            if mask_v_fov == 0:
+                mask_v_fov = vertical_fov
+
+            if is_point_in_view(
+                absolute_pan,
+                absolute_tilt,
+                mask_pan_center,
+                mask_tilt_center,
+                mask_h_fov,
+                mask_v_fov,
+            ) and coordinates:
+                active_coords.append(coordinates)
+        else:
+            pan_in_range = (
+                (pan_min is None or pan >= pan_min) and
+                (pan_max is None or pan <= pan_max)
+            )
+            tilt_in_range = (
+                (tilt_min is None or tilt >= tilt_min) and
+                (tilt_max is None or tilt <= tilt_max)
+            )
+
+            if pan_in_range and tilt_in_range and coordinates:
+                active_coords.append(coordinates)
 
     return active_coords
 

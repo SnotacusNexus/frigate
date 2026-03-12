@@ -55,6 +55,9 @@ class PTZMetrics:
     home_tilt: Synchronized
     home_zoom: Synchronized
 
+    absolute_pan: Synchronized
+    absolute_tilt: Synchronized
+
     tracking_active: Event
     motor_stopped: Event
     reset: Event
@@ -76,6 +79,9 @@ class PTZMetrics:
         self.home_pan = mp.Value("d", 0)
         self.home_tilt = mp.Value("d", 0)
         self.home_zoom = mp.Value("d", 0)
+
+        self.absolute_pan = mp.Value("d", 0)
+        self.absolute_tilt = mp.Value("d", 0)
 
         self.tracking_active = mp.Event()
         self.motor_stopped = mp.Event()

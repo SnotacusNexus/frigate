@@ -1083,6 +1083,8 @@ class OnvifController:
                         f"{camera_name}: Failed to get pan/tilt position: {e}"
                     )
 
+            self._update_absolute_angles(camera_name)
+
             # some hikvision cams won't update MoveStatus, so warn if it hasn't changed
             if (
                 not self.ptz_metrics[camera_name].motor_stopped.is_set()
@@ -1102,6 +1104,29 @@ class OnvifController:
                 logger.warning(
                     f"Camera {camera_name} is still in ONVIF 'MOVING' status."
                 )
+
+    def _update_absolute_angles(self, camera_name: str) -> None:
+        """Update absolute pan/tilt angles from relative position using FOV config."""
+        if camera_name not in self.config.cameras:
+            return
+
+        cam_config = self.config.cameras[camera_name].onvif
+        pan_range = cam_config.pan_range
+        tilt_range = cam_config.tilt_range
+
+        relative_pan = self.ptz_metrics[camera_name].pan.value
+        relative_tilt = self.ptz_metrics[camera_name].tilt.value
+
+        self.ptz_metrics[camera_name].absolute_pan.value = self._relative_to_absolute(
+            relative_pan, pan_range[0], pan_range[1]
+        )
+        self.ptz_metrics[camera_name].absolute_tilt.value = self._relative_to_absolute(
+            relative_tilt, tilt_range[0], tilt_range[1]
+        )
+
+    def _relative_to_absolute(self, relative: float, min_val: float, max_val: float) -> float:
+        """Convert relative position (0-1) to absolute angle using the range."""
+        return min_val + relative * (max_val - min_val)
 
     def close(self) -> None:
         """Gracefully shut down the ONVIF controller."""
