@@ -318,7 +318,6 @@ export default function PtzMaskEditor({
         />
         
         <PtzControlButtons
-          ptzInfo={ptzInfo}
           onMoveLeft={handleMoveLeft}
           onMoveRight={handleMoveRight}
           onMoveUp={handleMoveUp}
@@ -346,7 +345,6 @@ export default function PtzMaskEditor({
             />
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
               <PtzOverlayControls
-                ptzInfo={ptzInfo}
                 onMoveLeft={handleMoveLeft}
                 onMoveRight={handleMoveRight}
                 onMoveUp={handleMoveUp}
@@ -535,7 +533,6 @@ function PtzPositionDisplay({
 }
 
 interface PtzControlButtonsProps {
-  ptzInfo: CameraPtzInfo | undefined;
   onMoveLeft: () => void;
   onMoveRight: () => void;
   onMoveUp: () => void;
@@ -545,7 +542,6 @@ interface PtzControlButtonsProps {
 }
 
 function PtzControlButtons({
-  _ptzInfo,
   onMoveLeft,
   onMoveRight,
   onMoveUp,
@@ -679,7 +675,6 @@ function PtzControlButtons({
 }
 
 const PtzOverlayControls = React.memo(function PtzOverlayControls({
-  _ptzInfo,
   onMoveLeft,
   onMoveRight,
   onMoveUp,
@@ -904,7 +899,6 @@ export function PtzMaskCanvas({
       />
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
         <PtzOverlayControls
-          ptzInfo={ptzInfo}
           onMoveLeft={handleMoveLeft}
           onMoveRight={handleMoveRight}
           onMoveUp={handleMoveUp}
