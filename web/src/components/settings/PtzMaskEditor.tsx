@@ -17,7 +17,7 @@ import {
 import PolygonCanvas from "./PolygonCanvas";
 import PolygonEditControls from "./PolygonEditControls";
 import ActivityIndicator from "../indicators/activity-indicator";
-import { CameraPtzInfo, CameraPtzPosition } from "@/types/ptz";
+import { CameraPtzPosition } from "@/types/ptz";
 import { Polygon } from "@/types/canvas";
 import { usePtzCommand } from "@/api/ws";
 import { Toaster } from "../ui/sonner";
@@ -77,9 +77,6 @@ export default function PtzMaskEditor({
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef || internalContainerRef;
   
-  const { data: ptzInfo } = useSWR<CameraPtzInfo>(
-    camera ? `${camera}/ptz/info` : null,
-  );
   const [currentPtzPosition, setCurrentPtzPosition] = useState<CameraPtzPosition | null>(null);
   const [hoveredPolygonIndex] = useState<number | null>(null);
 
@@ -829,7 +826,6 @@ export function PtzMaskCanvas({
   snapPoints,
 }: PtzMaskCanvasProps) {
   const { t } = useTranslation(["views/settings"]);
-  const { data: ptzInfo } = useSWR<CameraPtzInfo>(camera ? `${camera}/ptz/info` : null);
   const [currentPtzPosition, setCurrentPtzPosition] = useState<CameraPtzPosition | null>(null);
   const [hoveredPolygonIndex] = useState<number | null>(null);
 
